@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "118669659979",
+    "project_id": "individual-learner-app",
+    "storage_bucket": "individual-learner-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:118669659979:android:2aa9cd03326f74926aa2ce",
+        "android_client_info": {
+          "package_name": "com.algorithmaliens.individual_learner_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB6-12HTk4NZD_A7yiBnqbET4BPYmCppSk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
