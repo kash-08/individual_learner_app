@@ -4,41 +4,42 @@ on:
   push:
     branches:
       - master
-
+      - main
   pull_request:
     branches:
       - master
-
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout the repository
+      # Step 1: Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Step 2: Setup Flutter (use the latest stable version)
+      # Step 2: Setup Flutter (use a compatible version)
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: 'latest'   # or '3.27.0' if you want a specific version
+          flutter-version: '3.24.3'   # ✅ Stable release supporting Dart 3.9.2
           channel: 'stable'
 
-      # Step 3: Get Flutter dependencies
+      # Step 3: Install dependencies
       - name: Install dependencies
         run: flutter pub get
 
-      # Step 4: Analyze the Dart code
-      - name: Analyze project source
+      # Step 4: Analyze Dart code
+      - name: Analyze project
         run: flutter analyze
 
       # Step 5: Run tests (optional)
       - name: Run tests
         run: flutter test
 
-      # Step 6: Build the app (for Android by default)
-      - name: Build APK
+      # Step 6: Build release APK
+      - name: Build release APK
         run: flutter build apk --release
+
 
