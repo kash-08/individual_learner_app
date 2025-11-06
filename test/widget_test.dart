@@ -12,6 +12,5 @@ import 'package:individual_learner_app/main.dart';
 
 void main() {
   void main() {
-    // TODO: Add real tests later
   }
 }
