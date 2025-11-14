@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../models/course_model.dart';
+import '../services/firebase_service.dart';
 
 class CourseProvider with ChangeNotifier {
   List<Course> _enrolledCourses = [];
@@ -17,40 +18,31 @@ class CourseProvider with ChangeNotifier {
     _error = null;
     notifyListeners();
 
-    // Simulate API delay
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      // Initialize sample data on first load
+      await FirebaseService.initializeSampleData();
 
-    // Mock data - replace with Firebase later
-    _loadMockData();
+      // Load courses from Firebase
+      _availableCourses = await FirebaseService.getAllCourses();
+      _enrolledCourses = await FirebaseService.getEnrolledCourses(FirebaseService.currentUserId);
 
-    _isLoading = false;
-    notifyListeners();
+      print('Loaded ${_availableCourses.length} available courses');
+      print('Loaded ${_enrolledCourses.length} enrolled courses');
+    } catch (e) {
+      _error = 'Failed to load courses: $e';
+      print('Error loading courses: $e');
+      // Fallback to mock data
+      _loadMockData();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> enrollInCourse(String courseId) async {
     try {
-      final courseIndex = _availableCourses.indexWhere((course) => course.id == courseId);
-      if (courseIndex != -1) {
-        final course = _availableCourses[courseIndex];
-        final enrolledCourse = Course(
-          id: course.id,
-          title: course.title,
-          description: course.description,
-          currentLesson: 0,
-          totalLessons: course.totalLessons,
-          progress: 0.0,
-          category: course.category,
-          instructor: course.instructor,
-          imageUrl: course.imageUrl,
-          isEnrolled: true,
-          enrolledDate: DateTime.now(),
-          difficulty: course.difficulty,
-        );
-
-        _enrolledCourses.add(enrolledCourse);
-        _availableCourses.removeAt(courseIndex);
-        notifyListeners();
-      }
+      await FirebaseService.enrollInCourse(FirebaseService.currentUserId, courseId);
+      await loadCourses(); // Reload to reflect changes
     } catch (e) {
       _error = 'Failed to enroll in course: $e';
       notifyListeners();
@@ -60,28 +52,8 @@ class CourseProvider with ChangeNotifier {
 
   Future<void> unenrollFromCourse(String courseId) async {
     try {
-      final courseIndex = _enrolledCourses.indexWhere((course) => course.id == courseId);
-      if (courseIndex != -1) {
-        final course = _enrolledCourses[courseIndex];
-        final availableCourse = Course(
-          id: course.id,
-          title: course.title,
-          description: course.description,
-          currentLesson: 0,
-          totalLessons: course.totalLessons,
-          progress: 0.0,
-          category: course.category,
-          instructor: course.instructor,
-          imageUrl: course.imageUrl,
-          isEnrolled: false,
-          enrolledDate: DateTime.now(),
-          difficulty: course.difficulty,
-        );
-
-        _availableCourses.add(availableCourse);
-        _enrolledCourses.removeAt(courseIndex);
-        notifyListeners();
-      }
+      await FirebaseService.unenrollFromCourse(FirebaseService.currentUserId, courseId);
+      await loadCourses(); // Reload to reflect changes
     } catch (e) {
       _error = 'Failed to unenroll from course: $e';
       notifyListeners();
@@ -89,10 +61,32 @@ class CourseProvider with ChangeNotifier {
     }
   }
 
+  Future<void> updateCourseProgress(String courseId, int completedLessons) async {
+    try {
+      final course = _enrolledCourses.firstWhere((c) => c.id == courseId);
+      final newProgress = completedLessons / course.totalLessons;
+
+      await FirebaseService.updateCourseProgress(
+          FirebaseService.currentUserId,
+          courseId,
+          completedLessons,
+          newProgress
+      );
+
+      await loadCourses(); // Reload to reflect changes
+    } catch (e) {
+      _error = 'Failed to update progress: $e';
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  // Fallback mock data
   void _loadMockData() {
+    print('Loading mock data as fallback');
     _enrolledCourses = [
       Course(
-        id: '1',
+        id: 'mock-1',
         title: 'React Native Fundamentals',
         description: 'Build mobile apps with React Native',
         currentLesson: 8,
@@ -109,7 +103,7 @@ class CourseProvider with ChangeNotifier {
 
     _availableCourses = [
       Course(
-        id: '2',
+        id: 'mock-2',
         title: 'Flutter Advanced',
         description: 'Advanced Flutter concepts and patterns',
         currentLesson: 0,
@@ -123,7 +117,7 @@ class CourseProvider with ChangeNotifier {
         difficulty: 'Advanced',
       ),
       Course(
-        id: '3',
+        id: 'mock-3',
         title: 'Python for Data Science',
         description: 'Data analysis and visualization with Python',
         currentLesson: 0,
@@ -132,20 +126,6 @@ class CourseProvider with ChangeNotifier {
         category: 'Data Science',
         instructor: 'Mike Johnson',
         imageUrl: 'https://via.placeholder.com/80x80/7209B7/FFFFFF?text=PY',
-        isEnrolled: false,
-        enrolledDate: DateTime.now(),
-        difficulty: 'Beginner',
-      ),
-      Course(
-        id: '4',
-        title: 'JavaScript Mastery',
-        description: 'Complete JavaScript guide from basics to advanced',
-        currentLesson: 0,
-        totalLessons: 15,
-        progress: 0.0,
-        category: 'Web Development',
-        instructor: 'Sarah Wilson',
-        imageUrl: 'https://via.placeholder.com/80x80/4CC9F0/FFFFFF?text=JS',
         isEnrolled: false,
         enrolledDate: DateTime.now(),
         difficulty: 'Beginner',
