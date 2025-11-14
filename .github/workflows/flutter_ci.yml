@@ -23,11 +23,9 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      # ✅ Analyze but don’t fail build on warnings
       - name: Analyze project (ignore warnings)
         run: flutter analyze || true
 
-      # ✅ Run tests, but don’t fail if you have no/placeholder tests
       - name: Run tests (ignore failures temporarily)
         run: flutter test || true
 
