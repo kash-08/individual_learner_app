@@ -1,8 +1,10 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:individual_learner_app/src/screens/home_screen.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:individual_learner_app/src/screens/home_screen.dart';
 import 'package:individual_learner_app/src/providers/course_provider.dart';
+import 'package:individual_learner_app/src/services/session_service.dart';
 import 'package:individual_learner_app/src/firebase/firebase_options.dart';
 
 void main() async {
@@ -13,10 +15,6 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Initialize SharedPreferences for session management
-  var SharedPreferences;
-  await SharedPreferences.getInstance();
-
   runApp(const MyApp());
 }
 
@@ -25,9 +23,12 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider( // Wrap with MultiProvider
+    return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => CourseProvider()),
+        Provider<SessionService>(
+          create: (_) => SessionService(),
+        ),
       ],
       child: MaterialApp(
         title: 'Learning App',

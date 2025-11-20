@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:individual_learner_app/src/providers/course_provider.dart';
 import '../models/course_model.dart';
+import '../services/session_service.dart';
 
 class CourseProgressCard extends StatelessWidget {
   final Course course;
@@ -211,11 +213,15 @@ class CourseProgressCard extends StatelessWidget {
 
             const SizedBox(height: 12),
 
-            // Continue Button
+            // Continue Button with Session Saving
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: onTap,
+                onPressed: () async {
+                  // Save current session before navigation
+                  await _saveCurrentSession(context);
+                  onTap();
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF4361EE),
                   foregroundColor: Colors.white,
@@ -237,6 +243,39 @@ class CourseProgressCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  // Method to save current session
+  Future<void> _saveCurrentSession(BuildContext context) async {
+    try {
+      var Provider;
+      final sessionService = Provider.of<SessionService>(context, listen: false);
+      await sessionService.saveSession(
+        courseId: course.id, // Use course.id instead of course_Id
+        courseTitle: course.title, // Use course.title instead of cousretitle
+        currentLesson: course.currentLesson, // Use course.currentLesson instead of courselesson
+        progress: course.progress, // Use course.progress instead of progress
+        timestamp: DateTime.now(), // Use DateTime.now() instead of timestamp
+      );
+
+      // Optional: Show success feedback
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Session saved for ${course.title}'),
+          duration: const Duration(seconds: 2),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      // Handle error gracefully
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to save session: $e'),
+          duration: const Duration(seconds: 3),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Color _getDifficultyColor(String difficulty) {
