@@ -3,10 +3,20 @@ import 'package:flutter/material.dart';
 import 'package:individual_learner_app/src/screens/home_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:individual_learner_app/src/providers/course_provider.dart';
+import 'package:individual_learner_app/src/firebase/firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+
+  // Initialize Firebase with platform-specific options
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  // Initialize SharedPreferences for session management
+  var SharedPreferences;
+  await SharedPreferences.getInstance();
+
   runApp(const MyApp());
 }
 
