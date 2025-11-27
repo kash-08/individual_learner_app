@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/update_model.dart';
 import '../models/user_model.dart';
 import '../models/course_model.dart';
 import '../models/session_model.dart';
 import '../providers/course_provider.dart';
+import '../providers/updates_provider.dart';
 import '../components/course_progress_card.dart';
 import '../components/resume_activity_card.dart';
+import '../components/update_card.dart';
 import 'course_catalog_screen.dart';
+import 'progress_updates_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -34,11 +38,18 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     // Load courses when screen initializes
     _loadCourses();
+    // Load weekly updates
+    _loadWeeklyUpdates();
   }
 
   Future<void> _loadCourses() async {
     final courseProvider = Provider.of<CourseProvider>(context, listen: false);
     await courseProvider.loadCourses();
+  }
+
+  Future<void> _loadWeeklyUpdates() async {
+    final updatesProvider = Provider.of<UpdatesProvider>(context, listen: false);
+    await updatesProvider.loadUpdates();
   }
 
   // Resume activity methods
@@ -101,6 +112,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
+      appBar: _buildAppBar(), // Added app bar here
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
@@ -119,6 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 24),
               _buildBrowseCoursesSection(),
               const SizedBox(height: 24),
+              // REMOVED: Separate Weekly Updates section - now combined in Progress & Updates screen
               _buildQuickActionsSection(),
             ],
           ),
@@ -126,6 +139,49 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+  // NEW: App Bar with proper color contrast
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      backgroundColor: const Color(0xFF4361EE), // Blue background
+      elevation: 4,
+      shadowColor: Colors.black.withOpacity(0.1),
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            'Learning Dashboard',
+            style: TextStyle(
+              color: Colors.white, // White text for contrast
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Track your progress and continue learning',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.9), // Slightly transparent white
+              fontSize: 14,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ],
+      ),
+      // Optional: Add actions if needed
+      // actions: [
+      //   IconButton(
+      //     icon: const Icon(Icons.notifications, color: Colors.white),
+      //     onPressed: () {},
+      //   ),
+      // ],
+    );
+  }
+
+  // REMOVED: _buildWeeklyUpdatesSection() - No longer needed as separate section
+
+  // REMOVED: _handleUpdateTap() - Moved to ProgressUpdatesScreen
 
   // Resume Activity Section - Now serves as the main learning section
   Widget _buildResumeActivitySection() {
@@ -799,6 +855,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // UPDATED: Quick Actions Section - Now navigates to ProgressUpdatesScreen
   Widget _buildQuickActionsSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -813,7 +870,13 @@ class _HomeScreenState extends State<HomeScreen> {
             Expanded(
               child: OutlinedButton(
                 onPressed: () {
-                  // Navigate to progress/analytics
+                  // Navigate to combined Progress & Updates screen
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ProgressUpdatesScreen(),
+                    ),
+                  );
                 },
                 style: OutlinedButton.styleFrom(
                   foregroundColor: const Color(0xFF4361EE),
@@ -823,7 +886,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
-                child: const Text('View Progress'),
+                child: const Text('View Progress & Updates'),
               ),
             ),
             const SizedBox(width: 12),
@@ -831,6 +894,12 @@ class _HomeScreenState extends State<HomeScreen> {
               child: ElevatedButton(
                 onPressed: () {
                   // Navigate to achievements
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Opening Achievements'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
                 },
                 child: const Text('Achievements'),
               ),

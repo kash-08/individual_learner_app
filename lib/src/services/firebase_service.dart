@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/course_model.dart';
 import '../models/user_model.dart';
+import '../models/update_model.dart'; // Add this import
 
 class FirebaseService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -19,6 +20,9 @@ class FirebaseService {
       final coursesSnapshot = await _firestore.collection('courses').get();
       if (coursesSnapshot.docs.isNotEmpty) {
         print('Courses already exist, skipping initialization');
+
+        // Initialize weekly updates even if courses exist
+        await initializeWeeklyUpdates();
         return;
       }
 
@@ -86,9 +90,144 @@ class FirebaseService {
         await _firestore.collection('courses').add(courseData);
       }
 
-      print('Sample courses initialized successfully!');
+      // Initialize weekly updates
+      await initializeWeeklyUpdates();
+
+      print('Sample courses and weekly updates initialized successfully!');
     } catch (e) {
       print('Error initializing sample data: $e');
+    }
+  }
+
+  // NEW: Weekly Updates Methods
+  static Future<List<Update>> getWeeklyUpdates() async {
+    try {
+      final snapshot = await _firestore
+          .collection('weekly_updates')
+          .where('isActive', isEqualTo: true)
+          .where('publishDate', isGreaterThan:
+      Timestamp.fromDate(DateTime.now().subtract(const Duration(days: 7))))
+          .orderBy('publishDate', descending: true)
+          .get();
+
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        return Update(
+          id: doc.id,
+          title: data['title'] ?? '',
+          description: data['description'] ?? '',
+          type: data['type'] ?? 'news',
+          imageUrl: data['imageUrl'],
+          publishDate: data['publishDate'] != null
+              ? (data['publishDate'] as Timestamp).toDate()
+              : DateTime.now(),
+          category: data['category'],
+          author: data['author'],
+          readTime: data['readTime'],
+          isNew: data['isNew'] ?? true,
+          metadata: data['metadata'] != null
+              ? Map<String, dynamic>.from(data['metadata'])
+              : null,
+        );
+      }).toList();
+    } catch (e) {
+      print('Error getting weekly updates: $e');
+      return [];
+    }
+  }
+
+  static Future<void> initializeWeeklyUpdates() async {
+    try {
+      final updatesSnapshot = await _firestore.collection('weekly_updates').get();
+      if (updatesSnapshot.docs.isNotEmpty) {
+        print('Weekly updates already exist, skipping initialization');
+        return;
+      }
+
+      final sampleUpdates = [
+        {
+          'title': 'New Flutter Course: Advanced State Management',
+          'description': 'Learn advanced state management techniques with Riverpod and Bloc',
+          'type': 'course',
+          'imageUrl': 'https://via.placeholder.com/300x200/4361EE/FFFFFF?text=Flutter+Advanced',
+          'publishDate': FieldValue.serverTimestamp(),
+          'category': 'Mobile Development',
+          'author': 'Jane Smith',
+          'readTime': '8 hours',
+          'isNew': true,
+          'isActive': true,
+          'metadata': {
+            'courseId': 'flutter-advanced-2024',
+            'difficulty': 'Advanced',
+            'enrollmentCount': 1247,
+          },
+        },
+        {
+          'title': 'The Future of AI in Mobile Development',
+          'description': 'Exploring how AI is transforming mobile app development and user experiences',
+          'type': 'article',
+          'imageUrl': 'https://via.placeholder.com/300x200/3A0CA3/FFFFFF?text=AI+Future',
+          'publishDate': FieldValue.serverTimestamp(),
+          'category': 'AI & ML',
+          'author': 'Dr. Alex Chen',
+          'readTime': '8 min',
+          'isNew': true,
+          'isActive': true,
+          'metadata': {
+            'readCount': 2843,
+            'likes': 156,
+          },
+        },
+        {
+          'title': 'React Native 2024 Updates',
+          'description': 'Major updates and new features in the latest React Native release',
+          'type': 'news',
+          'imageUrl': 'https://via.placeholder.com/300x200/7209B7/FFFFFF?text=React+Native',
+          'publishDate': FieldValue.serverTimestamp(),
+          'category': 'Mobile Development',
+          'author': 'John Doe',
+          'readTime': '5 min',
+          'isNew': true,
+          'isActive': true,
+        },
+        {
+          'title': 'Python for Machine Learning: Complete Guide',
+          'description': 'Comprehensive guide to machine learning with Python and TensorFlow',
+          'type': 'course',
+          'imageUrl': 'https://via.placeholder.com/300x200/4CC9F0/FFFFFF?text=Python+ML',
+          'publishDate': FieldValue.serverTimestamp(),
+          'category': 'AI & ML',
+          'author': 'Mike Johnson',
+          'readTime': '12 hours',
+          'isNew': false,
+          'isActive': true,
+          'metadata': {
+            'courseId': 'python-ml-2024',
+            'difficulty': 'Intermediate',
+            'enrollmentCount': 3562,
+          },
+        },
+        {
+          'title': 'Web Development Trends 2024',
+          'description': 'Top web development trends and technologies to watch this year',
+          'type': 'article',
+          'imageUrl': 'https://via.placeholder.com/300x200/F72585/FFFFFF?text=Web+Trends',
+          'publishDate': FieldValue.serverTimestamp(),
+          'category': 'Web Development',
+          'author': 'Sarah Wilson',
+          'readTime': '10 min',
+          'isNew': true,
+          'isActive': true,
+        },
+      ];
+
+      for (final updateData in sampleUpdates) {
+        await _firestore.collection('weekly_updates').add(updateData);
+      }
+
+      print('Weekly updates initialized successfully!');
+    } catch (e) {
+      print('Error initializing weekly updates: $e');
     }
   }
 
@@ -269,6 +408,66 @@ class FirebaseService {
     } catch (e) {
       print('Error updating progress: $e');
       rethrow;
+    }
+  }
+
+  // Helper method to ensure user document exists
+  static Future<void> ensureUserDocument(String userId) async {
+    try {
+      final userDoc = await _firestore.collection('users').doc(userId).get();
+
+      if (!userDoc.exists) {
+        await _firestore.collection('users').doc(userId).set({
+          'name': 'Alex',
+          'email': 'alex@example.com',
+          'xpPoints': 1247,
+          'dayStreak': 7,
+          'studyTimeThisWeek': 2.5,
+          'createdAt': FieldValue.serverTimestamp(),
+          'lastUpdated': FieldValue.serverTimestamp(),
+        });
+        print('✅ Created user document for: $userId');
+      } else {
+        // Update last accessed time
+        await _firestore.collection('users').doc(userId).update({
+          'lastUpdated': FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (e) {
+      print('❌ Error ensuring user document: $e');
+    }
+  }
+
+  // Method to clear all data and start fresh (for testing)
+  static Future<void> clearUserData(String userId) async {
+    try {
+      print('🧹 Clearing all user data for: $userId');
+
+      // Delete enrolled courses
+      final enrolledSnapshot = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('enrolled_courses')
+          .get();
+
+      for (final doc in enrolledSnapshot.docs) {
+        await doc.reference.delete();
+      }
+
+      // Delete progress data
+      final progressSnapshot = await _firestore
+          .collection('userProgress')
+          .doc(userId)
+          .collection('courses')
+          .get();
+
+      for (final doc in progressSnapshot.docs) {
+        await doc.reference.delete();
+      }
+
+      print('✅ User data cleared successfully');
+    } catch (e) {
+      print('❌ Error clearing user data: $e');
     }
   }
 }

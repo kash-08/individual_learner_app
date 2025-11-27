@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // Make sure this import exists
+import 'package:provider/provider.dart';
 import '../providers/course_provider.dart';
 import '../models/course_model.dart';
 
@@ -10,20 +10,53 @@ class CourseCatalogScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
-      appBar: AppBar(
-        title: const Text('Course Catalog'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF212529)),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: Consumer<CourseProvider>( // Use Consumer to access the provider
+      appBar: _buildAppBar(context), // Updated app bar
+      body: Consumer<CourseProvider>(
         builder: (context, courseProvider, child) {
-          return courseProvider.isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : ListView.builder(
+          if (courseProvider.isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (courseProvider.availableCourses.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.school_outlined,
+                    size: 64,
+                    color: Colors.grey[400],
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'No Courses Available',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Check back later for new courses',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      courseProvider.loadCourses();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4361EE),
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text('Refresh'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: courseProvider.availableCourses.length,
             itemBuilder: (context, index) {
@@ -36,12 +69,60 @@ class CourseCatalogScreen extends StatelessWidget {
     );
   }
 
+  // NEW: App Bar with proper color contrast matching other screens
+  PreferredSizeWidget _buildAppBar(BuildContext context) {
+    return AppBar(
+      backgroundColor: const Color(0xFF4361EE), // Blue background
+      elevation: 4,
+      shadowColor: Colors.black.withOpacity(0.1),
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back, color: Colors.white), // White icon
+        onPressed: () => Navigator.pop(context),
+      ),
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            'Course Catalog',
+            style: TextStyle(
+              color: Colors.white, // White text for contrast
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Explore and enroll in courses',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.9), // Slightly transparent white
+              fontSize: 14,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ],
+      ),
+      // Optional: Add search or filter actions
+      // actions: [
+      //   IconButton(
+      //     icon: const Icon(Icons.search, color: Colors.white),
+      //     onPressed: () {
+      //       // Implement search functionality
+      //     },
+      //   ),
+      // ],
+    );
+  }
+
   Widget _buildCourseCard(BuildContext context, Course course, CourseProvider courseProvider) {
+    final bool isEnrolled = courseProvider.enrolledCourses.any((c) => c.id == course.id);
+
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
+      margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
@@ -86,6 +167,15 @@ class CourseCatalogScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
+                    'By ${course.instructor}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF4361EE),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
                     course.description,
                     style: const TextStyle(
                       fontSize: 12,
@@ -116,10 +206,29 @@ class CourseCatalogScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF4361EE).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          course.category,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Color(0xFF4361EE),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
                       Text(
-                        course.category,
+                        '${course.totalLessons} lessons',
                         style: const TextStyle(
-                          fontSize: 12,
+                          fontSize: 11,
                           color: Color(0xFF6C757D),
                         ),
                       ),
@@ -130,7 +239,32 @@ class CourseCatalogScreen extends StatelessWidget {
             ),
 
             // Enroll Button
-            ElevatedButton(
+            const SizedBox(width: 12),
+            isEnrolled
+                ? Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.green[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.green),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.check_circle, color: Colors.green[700], size: 16),
+                  const SizedBox(width: 4),
+                  const Text(
+                    'Enrolled',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.green,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            )
+                : ElevatedButton(
               onPressed: () {
                 _enrollInCourse(context, course.id, courseProvider);
               },
@@ -174,14 +308,21 @@ class CourseCatalogScreen extends StatelessWidget {
       await courseProvider.enrollInCourse(courseId);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Successfully enrolled in course!'),
+        SnackBar(
+          content: const Text('Successfully enrolled in course!'),
           backgroundColor: Colors.green,
+          action: SnackBarAction(
+            label: 'View Course',
+            textColor: Colors.white,
+            onPressed: () {
+              // Navigate to course details or learning screen
+            },
+          ),
         ),
       );
 
-      // Navigate back to home screen
-      Navigator.pop(context);
+      // Optional: Auto-navigate back to home screen
+      // Navigator.pop(context);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

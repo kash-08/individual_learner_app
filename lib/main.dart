@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:individual_learner_app/src/screens/home_screen.dart';
 import 'package:individual_learner_app/src/providers/course_provider.dart';
+import 'package:individual_learner_app/src/providers/updates_provider.dart'; // Add this import
 import 'package:individual_learner_app/src/services/session_service.dart';
 import 'package:individual_learner_app/src/firebase/firebase_options.dart';
 
@@ -26,6 +27,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => CourseProvider()),
+        ChangeNotifierProvider(create: (_) => UpdatesProvider()), // Add this line
         Provider<SessionService>(
           create: (_) => SessionService(),
         ),
