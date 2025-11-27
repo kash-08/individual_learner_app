@@ -11,6 +11,7 @@ import '../components/resume_activity_card.dart';
 import '../components/update_card.dart';
 import 'course_catalog_screen.dart';
 import 'progress_updates_screen.dart';
+import 'achievements_screen.dart'; // ADD THIS IMPORT
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -855,7 +856,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // UPDATED: Quick Actions Section - Now navigates to ProgressUpdatesScreen
+  // UPDATED: Quick Actions Section - Now properly navigates to AchievementsScreen
   Widget _buildQuickActionsSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -893,14 +894,22 @@ class _HomeScreenState extends State<HomeScreen> {
             Expanded(
               child: ElevatedButton(
                 onPressed: () {
-                  // Navigate to achievements
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Opening Achievements'),
-                      backgroundColor: Colors.green,
+                  // Navigate to achievements screen
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AchievementsScreen(),
                     ),
                   );
                 },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF4361EE),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
                 child: const Text('Achievements'),
               ),
             ),

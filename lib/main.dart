@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:individual_learner_app/src/providers/achievement_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:individual_learner_app/src/screens/home_screen.dart';
@@ -28,6 +29,8 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => CourseProvider()),
         ChangeNotifierProvider(create: (_) => UpdatesProvider()), // Add this line
+        // Add this to your MultiProvider
+        ChangeNotifierProvider(create: (context) => AchievementProvider()),
         Provider<SessionService>(
           create: (_) => SessionService(),
         ),
