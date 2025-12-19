@@ -11,7 +11,8 @@ import '../components/resume_activity_card.dart';
 import '../components/update_card.dart';
 import 'course_catalog_screen.dart';
 import 'progress_updates_screen.dart';
-import 'achievements_screen.dart'; // ADD THIS IMPORT
+import 'achievements_screen.dart';
+import 'exams_screen.dart'; // ADD THIS IMPORT
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -433,75 +434,122 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // UPDATED: AI Tools Section - Now includes Challenges & Exams
   Widget _buildAIToolsSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'AI Learning Tools',
+          'Learning Tools',
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         const SizedBox(height: 12),
-        _buildAIToolCard(
+        _buildToolCard(
+          icon: Icons.auto_awesome,
           title: 'Smart Timetable',
           description: 'AI-optimized study schedule',
+          color: Colors.blue,
+          onTap: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Smart Timetable coming soon!'),
+                backgroundColor: Colors.blue,
+              ),
+            );
+          },
         ),
         const SizedBox(height: 8),
-        _buildAIToolCard(
+        _buildToolCard(
+          icon: Icons.smart_toy,
           title: 'AI Assistant',
           description: 'Get instant help and explanations',
+          color: Colors.purple,
+          onTap: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('AI Assistant coming soon!'),
+                backgroundColor: Colors.purple,
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 8),
+        // NEW: Challenges & Exams Card
+        _buildToolCard(
+          icon: Icons.quiz,
+          title: 'Challenges & Exams',
+          description: 'Quizzes, coding challenges, mock exams',
+          color: Colors.orange,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ExamsScreen(),
+              ),
+            );
+          },
         ),
       ],
     );
   }
 
-  Widget _buildAIToolCard({required String title, required String description}) {
+  Widget _buildToolCard({
+    required IconData icon,
+    required String title,
+    required String description,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: const Color(0xFF4361EE).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  icon,
+                  color: color,
+                  size: 20,
+                ),
               ),
-              child: const Icon(
-                Icons.auto_awesome,
-                color: Color(0xFF4361EE),
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                  Text(
-                    description,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ],
+                    Text(
+                      description,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const Icon(
-              Icons.arrow_forward_ios,
-              color: Color(0xFF6C757D),
-              size: 16,
-            ),
-          ],
+              const Icon(
+                Icons.arrow_forward_ios,
+                color: Color(0xFF6C757D),
+                size: 16,
+              ),
+            ],
+          ),
         ),
       ),
     );

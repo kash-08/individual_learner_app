@@ -3,80 +3,272 @@ import 'package:provider/provider.dart';
 import '../providers/course_provider.dart';
 import '../models/course_model.dart';
 
-class CourseCatalogScreen extends StatelessWidget {
+class CourseCatalogScreen extends StatefulWidget {
   const CourseCatalogScreen({super.key});
+
+  @override
+  State<CourseCatalogScreen> createState() => _CourseCatalogScreenState();
+}
+
+class _CourseCatalogScreenState extends State<CourseCatalogScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Load courses when screen initializes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final courseProvider = Provider.of<CourseProvider>(context, listen: false);
+      if (courseProvider.availableCourses.isEmpty) {
+        courseProvider.loadCourses();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
-      appBar: _buildAppBar(context), // Updated app bar
+      appBar: _buildAppBar(context),
       body: Consumer<CourseProvider>(
         builder: (context, courseProvider, child) {
-          if (courseProvider.isLoading) {
-            return const Center(child: CircularProgressIndicator());
+          // Debug information
+          print('=== Course Catalog Debug Info ===');
+          print('Is Loading: ${courseProvider.isLoading}');
+          print('Available Courses: ${courseProvider.availableCourses.length}');
+          print('Error: ${courseProvider.error}');
+
+          for (var i = 0; i < courseProvider.availableCourses.length; i++) {
+            print('Course $i: ${courseProvider.availableCourses[i].title}');
+          }
+          print('===============================');
+
+          if (courseProvider.isLoading && courseProvider.availableCourses.isEmpty) {
+            return _buildLoadingState();
+          }
+
+          if (courseProvider.error != null && courseProvider.availableCourses.isEmpty) {
+            return _buildErrorState(context, courseProvider);
           }
 
           if (courseProvider.availableCourses.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.school_outlined,
-                    size: 64,
-                    color: Colors.grey[400],
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'No Courses Available',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Check back later for new courses',
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      courseProvider.loadCourses();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4361EE),
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text('Refresh'),
-                  ),
-                ],
-              ),
-            );
+            return _buildEmptyState(context, courseProvider);
           }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: courseProvider.availableCourses.length,
-            itemBuilder: (context, index) {
-              final course = courseProvider.availableCourses[index];
-              return _buildCourseCard(context, course, courseProvider);
-            },
-          );
+          return _buildCourseList(context, courseProvider);
         },
       ),
     );
   }
 
-  // NEW: App Bar with proper color contrast matching other screens
+  Widget _buildLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const CircularProgressIndicator(),
+          const SizedBox(height: 16),
+          Text(
+            'Loading Courses...',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Please wait while we fetch available courses',
+            style: TextStyle(color: Color(0xFF6C757D)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState(BuildContext context, CourseProvider courseProvider) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.error_outline,
+              size: 64,
+              color: Colors.red,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Failed to Load Courses',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.red,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              courseProvider.error!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Color(0xFF6C757D),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    courseProvider.loadCourses();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4361EE),
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Try Again'),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton(
+                  onPressed: () {
+                    // Call the mock data method from provider
+                    courseProvider.loadMockData(); // Note: no underscore! // You need to make this method public or use a different approach
+                    // Alternative: create a public method in provider
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Use Demo Data'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context, CourseProvider courseProvider) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.school_outlined,
+              size: 80,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'No Courses Found',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF212529),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'It looks like there are no courses available at the moment.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Color(0xFF6C757D),
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'This could be due to:',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                color: Color(0xFF6C757D),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8F9FA),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFE9ECEF)),
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('• No internet connection'),
+                  Text('• Firebase not configured'),
+                  Text('• No courses in database'),
+                  Text('• App needs re-installation'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    courseProvider.loadCourses();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4361EE),
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(200, 48),
+                  ),
+                  child: const Text('Refresh Courses'),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton(
+                  onPressed: () {
+                    // You need to add a method to load mock data
+                    // Example: courseProvider.loadMockData();
+                    // For now, just reload
+                    courseProvider.loadCourses();
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF4361EE),
+                    side: const BorderSide(color: Color(0xFF4361EE)),
+                    minimumSize: const Size(200, 48),
+                  ),
+                  child: const Text('Load Sample Courses'),
+                ),
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Go Back to Home'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCourseList(BuildContext context, CourseProvider courseProvider) {
+    return RefreshIndicator(
+      onRefresh: () async {
+        await courseProvider.loadCourses();
+      },
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: courseProvider.availableCourses.length,
+        itemBuilder: (context, index) {
+          final course = courseProvider.availableCourses[index];
+          return _buildCourseCard(context, course, courseProvider);
+        },
+      ),
+    );
+  }
+
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
-      backgroundColor: const Color(0xFF4361EE), // Blue background
+      backgroundColor: const Color(0xFF4361EE),
       elevation: 4,
       shadowColor: Colors.black.withOpacity(0.1),
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: Colors.white), // White icon
+        icon: const Icon(Icons.arrow_back, color: Colors.white),
         onPressed: () => Navigator.pop(context),
       ),
       title: Column(
@@ -86,31 +278,43 @@ class CourseCatalogScreen extends StatelessWidget {
           Text(
             'Course Catalog',
             style: TextStyle(
-              color: Colors.white, // White text for contrast
+              color: Colors.white,
               fontSize: 20,
               fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            'Explore and enroll in courses',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.9), // Slightly transparent white
-              fontSize: 14,
-              fontWeight: FontWeight.w400,
-            ),
+          Consumer<CourseProvider>(
+            builder: (context, courseProvider, child) {
+              return Text(
+                '${courseProvider.availableCourses.length} courses available',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.9),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                ),
+              );
+            },
           ),
         ],
       ),
-      // Optional: Add search or filter actions
-      // actions: [
-      //   IconButton(
-      //     icon: const Icon(Icons.search, color: Colors.white),
-      //     onPressed: () {
-      //       // Implement search functionality
-      //     },
-      //   ),
-      // ],
+      actions: [
+        Consumer<CourseProvider>(
+          builder: (context, courseProvider, child) {
+            return IconButton(
+              icon: Icon(
+                courseProvider.isLoading ? Icons.hourglass_top : Icons.refresh,
+                color: Colors.white,
+              ),
+              onPressed: courseProvider.isLoading
+                  ? null
+                  : () {
+                courseProvider.loadCourses();
+              },
+            );
+          },
+        ),
+      ],
     );
   }
 
@@ -123,169 +327,299 @@ class CourseCatalogScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Course Image
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: const Color(0xFF4361EE).withOpacity(0.1),
-                image: course.imageUrl.isNotEmpty
-                    ? DecorationImage(
-                  image: NetworkImage(course.imageUrl),
-                  fit: BoxFit.cover,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          // Show course details
+          _showCourseDetails(context, course, courseProvider);
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Course Image
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: const Color(0xFF4361EE).withOpacity(0.1),
+                  image: course.imageUrl.isNotEmpty
+                      ? DecorationImage(
+                    image: NetworkImage(course.imageUrl),
+                    fit: BoxFit.cover,
+                  )
+                      : null,
+                ),
+                child: course.imageUrl.isEmpty
+                    ? const Icon(
+                  Icons.school,
+                  color: Color(0xFF4361EE),
+                  size: 24,
                 )
                     : null,
               ),
-              child: course.imageUrl.isEmpty
-                  ? const Icon(
-                Icons.school,
-                color: Color(0xFF4361EE),
-                size: 24,
-              )
-                  : null,
-            ),
-            const SizedBox(width: 12),
+              const SizedBox(width: 12),
 
-            // Course Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              // Course Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      course.title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF212529),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'By ${course.instructor}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF4361EE),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      course.description,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF6C757D),
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _getDifficultyColor(course.difficulty),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            course.difficulty,
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF4361EE).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            course.category,
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: Color(0xFF4361EE),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          '${course.totalLessons} lessons',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF6C757D),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // Enroll Button
+              const SizedBox(width: 12),
+              isEnrolled
+                  ? Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.green[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.green[700], size: 16),
+                    const SizedBox(width: 4),
+                    const Text(
+                      'Enrolled',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.green,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+                  : ElevatedButton(
+                onPressed: () {
+                  _enrollInCourse(context, course.id, courseProvider);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF4361EE),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                ),
+                child: const Text(
+                  'Enroll',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showCourseDetails(BuildContext context, Course course, CourseProvider courseProvider) {
+    final bool isEnrolled = courseProvider.enrolledCourses.any((c) => c.id == course.id);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(course.title),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (course.imageUrl.isNotEmpty)
+                Container(
+                  height: 120,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    color: const Color(0xFF4361EE).withOpacity(0.1),
+                    image: DecorationImage(
+                      image: NetworkImage(course.imageUrl),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 12),
+              Text(
+                course.description,
+                style: const TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 12),
+              Row(
                 children: [
+                  const Icon(Icons.person, size: 16, color: Color(0xFF6C757D)),
+                  const SizedBox(width: 4),
                   Text(
-                    course.title,
+                    course.instructor,
                     style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF212529),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'By ${course.instructor}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF4361EE),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    course.description,
-                    style: const TextStyle(
-                      fontSize: 12,
+                      fontSize: 14,
                       color: Color(0xFF6C757D),
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _getDifficultyColor(course.difficulty),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          course.difficulty,
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF4361EE).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          course.category,
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: Color(0xFF4361EE),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      const Spacer(),
-                      Text(
-                        '${course.totalLessons} lessons',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: Color(0xFF6C757D),
-                        ),
-                      ),
-                    ],
                   ),
                 ],
               ),
-            ),
-
-            // Enroll Button
-            const SizedBox(width: 12),
-            isEnrolled
-                ? Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.green[50],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.green),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
+              const SizedBox(height: 8),
+              Row(
                 children: [
-                  Icon(Icons.check_circle, color: Colors.green[700], size: 16),
+                  const Icon(Icons.category, size: 16, color: Color(0xFF6C757D)),
                   const SizedBox(width: 4),
-                  const Text(
-                    'Enrolled',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.green,
-                      fontWeight: FontWeight.w500,
+                  Text(
+                    course.category,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF6C757D),
                     ),
                   ),
                 ],
               ),
-            )
-                : ElevatedButton(
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(Icons.school, size: 16, color: Color(0xFF6C757D)),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${course.totalLessons} lessons',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF6C757D),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(Icons.speed, size: 16, color: Color(0xFF6C757D)),
+                  const SizedBox(width: 4),
+                  Text(
+                    course.difficulty,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF6C757D),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+          if (!isEnrolled)
+            ElevatedButton(
               onPressed: () {
+                Navigator.pop(context);
                 _enrollInCourse(context, course.id, courseProvider);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF4361EE),
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               ),
-              child: const Text(
-                'Enroll',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+              child: const Text('Enroll Now'),
             ),
-          ],
-        ),
+          if (isEnrolled)
+            OutlinedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                // Navigate to course learning screen
+              },
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF4361EE),
+                side: const BorderSide(color: Color(0xFF4361EE)),
+              ),
+              child: const Text('Continue Learning'),
+            ),
+        ],
       ),
     );
   }
@@ -308,26 +642,18 @@ class CourseCatalogScreen extends StatelessWidget {
       await courseProvider.enrollInCourse(courseId);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Successfully enrolled in course!'),
+        const SnackBar(
+          content: Text('Successfully enrolled in course!'),
           backgroundColor: Colors.green,
-          action: SnackBarAction(
-            label: 'View Course',
-            textColor: Colors.white,
-            onPressed: () {
-              // Navigate to course details or learning screen
-            },
-          ),
+          duration: Duration(seconds: 2),
         ),
       );
-
-      // Optional: Auto-navigate back to home screen
-      // Navigator.pop(context);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Failed to enroll: $e'),
           backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
         ),
       );
     }

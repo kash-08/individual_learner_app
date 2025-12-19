@@ -8,6 +8,7 @@ import 'package:individual_learner_app/src/providers/course_provider.dart';
 import 'package:individual_learner_app/src/providers/updates_provider.dart'; // Add this import
 import 'package:individual_learner_app/src/services/session_service.dart';
 import 'package:individual_learner_app/src/firebase/firebase_options.dart';
+import 'package:individual_learner_app/src/providers/exam_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,6 +35,7 @@ class MyApp extends StatelessWidget {
         Provider<SessionService>(
           create: (_) => SessionService(),
         ),
+        ChangeNotifierProvider(create: (_) => ExamProvider()),
       ],
       child: MaterialApp(
         title: 'Learning App',
