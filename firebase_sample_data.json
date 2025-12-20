@@ -1,0 +1,568 @@
+{
+  "assessments": {
+    "quiz_flutter_basics": {
+      "title": "Flutter Basics Quiz",
+      "description": "Test your knowledge of Flutter fundamentals including widgets, state management, and layouts",
+      "type": "quiz",
+      "category": "Mobile Development",
+      "difficulty": "Easy",
+      "duration": 15,
+      "totalQuestions": 5,
+      "passingScore": 60,
+      "isActive": true,
+      "createdAt": "2025-12-20T00:00:00.000Z",
+      "questions": [
+        {
+          "questionText": "What is Flutter?",
+          "options": [
+            "A programming language",
+            "A UI framework for building cross-platform apps",
+            "A database management system",
+            "An operating system"
+          ],
+          "correctAnswerIndex": 1,
+          "explanation": "Flutter is Google's UI toolkit for building beautiful, natively compiled applications for mobile, web, and desktop from a single codebase.",
+          "points": 10
+        },
+        {
+          "questionText": "Which programming language is primarily used with Flutter?",
+          "options": [
+            "Java",
+            "Kotlin",
+            "Dart",
+            "Swift"
+          ],
+          "correctAnswerIndex": 2,
+          "explanation": "Flutter uses Dart as its programming language, which was also developed by Google.",
+          "points": 10
+        },
+        {
+          "questionText": "What does 'StatelessWidget' mean in Flutter?",
+          "options": [
+            "A widget that has no state and never changes",
+            "A widget with mutable state",
+            "A widget that manages database state",
+            "A widget for network calls"
+          ],
+          "correctAnswerIndex": 0,
+          "explanation": "StatelessWidget is immutable and its properties can't change—all values are final.",
+          "points": 10
+        },
+        {
+          "questionText": "Which widget is used for scrollable lists in Flutter?",
+          "options": [
+            "Container",
+            "Column",
+            "ListView",
+            "Row"
+          ],
+          "correctAnswerIndex": 2,
+          "explanation": "ListView is the primary widget for creating scrollable lists in Flutter.",
+          "points": 10
+        },
+        {
+          "questionText": "What command is used to create a new Flutter project?",
+          "options": [
+            "flutter init",
+            "flutter new",
+            "flutter create",
+            "flutter start"
+          ],
+          "correctAnswerIndex": 2,
+          "explanation": "The 'flutter create' command is used to create a new Flutter project with all necessary files and folders.",
+          "points": 10
+        }
+      ]
+    },
+    "quiz_dart_advanced": {
+      "title": "Advanced Dart Programming",
+      "description": "Deep dive into Dart language features including async programming, streams, and null safety",
+      "type": "quiz",
+      "category": "Programming",
+      "difficulty": "Medium",
+      "duration": 20,
+      "totalQuestions": 6,
+      "passingScore": 70,
+      "isActive": true,
+      "createdAt": "2025-12-20T00:00:00.000Z",
+      "questions": [
+        {
+          "questionText": "What keyword is used to define an asynchronous function in Dart?",
+          "options": [
+            "await",
+            "async",
+            "future",
+            "promise"
+          ],
+          "correctAnswerIndex": 1,
+          "explanation": "The 'async' keyword is used to mark a function as asynchronous in Dart.",
+          "points": 10
+        },
+        {
+          "questionText": "What does the '??' operator do in Dart?",
+          "options": [
+            "Division operator",
+            "Null-aware operator that returns the right operand if the left is null",
+            "Comparison operator",
+            "Assignment operator"
+          ],
+          "correctAnswerIndex": 1,
+          "explanation": "The '??' operator returns the right-hand operand if the left-hand operand is null, otherwise it returns the left-hand operand.",
+          "points": 10
+        },
+        {
+          "questionText": "Which collection in Dart does NOT allow duplicate values?",
+          "options": [
+            "List",
+            "Map",
+            "Set",
+            "Queue"
+          ],
+          "correctAnswerIndex": 2,
+          "explanation": "Set is an unordered collection of unique items in Dart.",
+          "points": 10
+        },
+        {
+          "questionText": "What is a Stream in Dart?",
+          "options": [
+            "A type of variable",
+            "A sequence of asynchronous events",
+            "A database connection",
+            "A file reader"
+          ],
+          "correctAnswerIndex": 1,
+          "explanation": "A Stream provides a sequence of asynchronous events. It's like an asynchronous Iterable.",
+          "points": 10
+        },
+        {
+          "questionText": "What does 'late' keyword indicate in Dart?",
+          "options": [
+            "The variable is deprecated",
+            "The variable will be initialized later before first use",
+            "The variable is optional",
+            "The variable is asynchronous"
+          ],
+          "correctAnswerIndex": 1,
+          "explanation": "The 'late' modifier means the variable will be initialized later, but before it's used for the first time.",
+          "points": 10
+        },
+        {
+          "questionText": "How do you create a constant list in Dart?",
+          "options": [
+            "final list = []",
+            "const list = []",
+            "var list = const []",
+            "List list = []"
+          ],
+          "correctAnswerIndex": 1,
+          "explanation": "Using 'const' creates a compile-time constant list that cannot be modified.",
+          "points": 10
+        }
+      ]
+    },
+    "challenge_algorithm_basics": {
+      "title": "Algorithm Problem Solving",
+      "description": "Solve algorithmic challenges covering arrays, strings, and basic data structures",
+      "type": "challenge",
+      "category": "Algorithms",
+      "difficulty": "Medium",
+      "duration": 30,
+      "totalQuestions": 5,
+      "passingScore": 60,
+      "isActive": true,
+      "createdAt": "2025-12-20T00:00:00.000Z",
+      "questions": [
+        {
+          "questionText": "What is the time complexity of binary search in a sorted array?",
+          "options": [
+            "O(n)",
+            "O(log n)",
+            "O(n log n)",
+            "O(1)"
+          ],
+          "correctAnswerIndex": 1,
+          "explanation": "Binary search has O(log n) time complexity as it divides the search space in half with each iteration.",
+          "points": 10
+        },
+        {
+          "questionText": "Which data structure uses LIFO (Last In First Out) principle?",
+          "options": [
+            "Queue",
+            "Stack",
+            "Array",
+            "Linked List"
+          ],
+          "correctAnswerIndex": 1,
+          "explanation": "Stack follows the LIFO principle where the last element added is the first one to be removed.",
+          "points": 10
+        },
+        {
+          "questionText": "What is the worst-case time complexity of QuickSort?",
+          "options": [
+            "O(n)",
+            "O(n log n)",
+            "O(n²)",
+            "O(log n)"
+          ],
+          "correctAnswerIndex": 2,
+          "explanation": "QuickSort has a worst-case time complexity of O(n²) when the pivot is poorly chosen.",
+          "points": 10
+        },
+        {
+          "questionText": "In a hash table, what happens when two keys hash to the same index?",
+          "options": [
+            "Error occurs",
+            "One value overwrites the other",
+            "Collision - resolved using techniques like chaining",
+            "The table automatically resizes"
+          ],
+          "correctAnswerIndex": 2,
+          "explanation": "Hash collisions are resolved using techniques like chaining (linked lists) or open addressing.",
+          "points": 10
+        },
+        {
+          "questionText": "Which algorithm is best for finding the shortest path in a weighted graph?",
+          "options": [
+            "Depth First Search",
+            "Breadth First Search",
+            "Dijkstra's Algorithm",
+            "Binary Search"
+          ],
+          "correctAnswerIndex": 2,
+          "explanation": "Dijkstra's algorithm is specifically designed to find the shortest path in weighted graphs with non-negative weights.",
+          "points": 10
+        }
+      ]
+    },
+    "challenge_data_structures": {
+      "title": "Data Structures Challenge",
+      "description": "Master fundamental data structures: arrays, linked lists, trees, and graphs",
+      "type": "challenge",
+      "category": "Data Structures",
+      "difficulty": "Hard",
+      "duration": 40,
+      "totalQuestions": 6,
+      "passingScore": 70,
+      "isActive": true,
+      "createdAt": "2025-12-20T00:00:00.000Z",
+      "questions": [
+        {
+          "questionText": "What is the main advantage of a linked list over an array?",
+          "options": [
+            "Faster access to elements",
+            "Dynamic size with efficient insertions/deletions",
+            "Better memory utilization",
+            "Easier to implement"
+          ],
+          "correctAnswerIndex": 1,
+          "explanation": "Linked lists allow dynamic memory allocation and efficient insertion/deletion operations.",
+          "points": 10
+        },
+        {
+          "questionText": "In a binary search tree, what property must be maintained?",
+          "options": [
+            "All nodes must have exactly two children",
+            "Left subtree values < node value < right subtree values",
+            "Tree must be balanced",
+            "All leaves must be at the same level"
+          ],
+          "correctAnswerIndex": 1,
+          "explanation": "BST property: left subtree contains only nodes with values less than the parent, right subtree contains only nodes with values greater.",
+          "points": 10
+        },
+        {
+          "questionText": "Which traversal method visits nodes in the order: Left-Root-Right?",
+          "options": [
+            "Preorder",
+            "Inorder",
+            "Postorder",
+            "Level order"
+          ],
+          "correctAnswerIndex": 1,
+          "explanation": "Inorder traversal visits left subtree, then root, then right subtree.",
+          "points": 10
+        },
+        {
+          "questionText": "What is the height of a complete binary tree with n nodes?",
+          "options": [
+            "O(n)",
+            "O(log n)",
+            "O(n log n)",
+            "O(1)"
+          ],
+          "correctAnswerIndex": 1,
+          "explanation": "A complete binary tree has height O(log n) as it's fully filled except possibly the last level.",
+          "points": 10
+        },
+        {
+          "questionText": "Which data structure is best for implementing undo functionality?",
+          "options": [
+            "Queue",
+            "Stack",
+            "Tree",
+            "Hash Table"
+          ],
+          "correctAnswerIndex": 1,
+          "explanation": "Stack is ideal for undo operations as it maintains a LIFO order of actions.",
+          "points": 10
+        },
+        {
+          "questionText": "What is a circular queue?",
+          "options": [
+            "A queue that never gets full",
+            "A queue where rear connects back to front",
+            "A queue with circular elements",
+            "A queue that rotates elements"
+          ],
+          "correctAnswerIndex": 1,
+          "explanation": "A circular queue treats the array as circular, connecting the rear back to the front to reuse space.",
+          "points": 10
+        }
+      ]
+    },
+    "exam_mobile_dev_comprehensive": {
+      "title": "Mobile Development Comprehensive Exam",
+      "description": "Complete assessment covering Flutter, Dart, UI/UX design, and app architecture",
+      "type": "mockExam",
+      "category": "Mobile Development",
+      "difficulty": "Hard",
+      "duration": 60,
+      "totalQuestions": 10,
+      "passingScore": 75,
+      "isActive": true,
+      "createdAt": "2025-12-20T00:00:00.000Z",
+      "questions": [
+        {
+          "questionText": "What is the purpose of the BuildContext in Flutter?",
+          "options": [
+            "To build the app UI",
+            "To provide location of a widget in the widget tree",
+            "To manage app state",
+            "To handle user input"
+          ],
+          "correctAnswerIndex": 1,
+          "explanation": "BuildContext represents the location of a widget in the widget tree and is used to access inherited widgets.",
+          "points": 10
+        },
+        {
+          "questionText": "Which state management solution is built into Flutter?",
+          "options": [
+            "Redux",
+            "MobX",
+            "Provider",
+            "setState"
+          ],
+          "correctAnswerIndex": 3,
+          "explanation": "setState() is the built-in method for state management in StatefulWidgets.",
+          "points": 10
+        },
+        {
+          "questionText": "What is the purpose of the pubspec.yaml file?",
+          "options": [
+            "Store user data",
+            "Define app dependencies and assets",
+            "Configure database",
+            "Manage API keys"
+          ],
+          "correctAnswerIndex": 1,
+          "explanation": "pubspec.yaml defines project dependencies, assets, fonts, and other project metadata.",
+          "points": 10
+        },
+        {
+          "questionText": "Which widget is used for navigation in Flutter?",
+          "options": [
+            "Route",
+            "Navigator",
+            "PageView",
+            "BottomNavigationBar"
+          ],
+          "correctAnswerIndex": 1,
+          "explanation": "Navigator manages a stack of Route objects and provides methods for managing the stack.",
+          "points": 10
+        },
+        {
+          "questionText": "What does 'hot reload' do in Flutter?",
+          "options": [
+            "Restarts the entire app",
+            "Injects updated source code files into running app",
+            "Clears app cache",
+            "Rebuilds the entire project"
+          ],
+          "correctAnswerIndex": 1,
+          "explanation": "Hot reload injects updated source code into the running Dart VM, preserving app state.",
+          "points": 10
+        },
+        {
+          "questionText": "What is the difference between MainAxisAlignment and CrossAxisAlignment?",
+          "options": [
+            "No difference, they're the same",
+            "MainAxis is horizontal, CrossAxis is vertical",
+            "MainAxis is the primary direction, CrossAxis is perpendicular",
+            "MainAxis is for Row, CrossAxis is for Column"
+          ],
+          "correctAnswerIndex": 2,
+          "explanation": "MainAxis aligns children along the main direction (horizontal for Row, vertical for Column), CrossAxis aligns perpendicular to it.",
+          "points": 10
+        },
+        {
+          "questionText": "What is the purpose of keys in Flutter?",
+          "options": [
+            "Encrypt data",
+            "Uniquely identify widgets and preserve state",
+            "Store API keys",
+            "Lock user input"
+          ],
+          "correctAnswerIndex": 1,
+          "explanation": "Keys help Flutter identify widgets uniquely and preserve their state when the widget tree changes.",
+          "points": 10
+        },
+        {
+          "questionText": "Which method is called when a StatefulWidget is removed from the tree?",
+          "options": [
+            "dispose()",
+            "deactivate()",
+            "unmount()",
+            "remove()"
+          ],
+          "correctAnswerIndex": 0,
+          "explanation": "dispose() is called when a StatefulWidget is permanently removed from the tree and should clean up resources.",
+          "points": 10
+        },
+        {
+          "questionText": "What is a Future in Dart?",
+          "options": [
+            "A scheduled task",
+            "An object representing a potential value or error available in the future",
+            "A time-based function",
+            "A prediction algorithm"
+          ],
+          "correctAnswerIndex": 1,
+          "explanation": "A Future represents a computation that doesn't complete immediately and will have a value or error available in the future.",
+          "points": 10
+        },
+        {
+          "questionText": "Which layout widget allows children to overflow into a scrollable view?",
+          "options": [
+            "Column",
+            "Row",
+            "SingleChildScrollView",
+            "Container"
+          ],
+          "correctAnswerIndex": 2,
+          "explanation": "SingleChildScrollView makes its child scrollable when the child's size exceeds the viewport.",
+          "points": 10
+        }
+      ]
+    },
+    "exam_programming_fundamentals": {
+      "title": "Programming Fundamentals Exam",
+      "description": "Test your understanding of core programming concepts, OOP, and software design principles",
+      "type": "mockExam",
+      "category": "Programming",
+      "difficulty": "Medium",
+      "duration": 45,
+      "totalQuestions": 8,
+      "passingScore": 70,
+      "isActive": true,
+      "createdAt": "2025-12-20T00:00:00.000Z",
+      "questions": [
+        {
+          "questionText": "What is encapsulation in OOP?",
+          "options": [
+            "Creating multiple classes",
+            "Bundling data and methods that operate on that data within a class",
+            "Inheriting from parent classes",
+            "Overriding methods"
+          ],
+          "correctAnswerIndex": 1,
+          "explanation": "Encapsulation is bundling data (attributes) and methods (functions) within a class and controlling access to them.",
+          "points": 10
+        },
+        {
+          "questionText": "What does polymorphism allow in programming?",
+          "options": [
+            "Multiple variables with same name",
+            "Objects of different types to be treated uniformly",
+            "Creating multiple classes",
+            "Hiding implementation details"
+          ],
+          "correctAnswerIndex": 1,
+          "explanation": "Polymorphism allows objects of different classes to be treated as objects of a common parent class.",
+          "points": 10
+        },
+        {
+          "questionText": "What is the difference between '==' and 'equals()' in most OOP languages?",
+          "options": [
+            "No difference",
+            "== compares references, equals() compares values",
+            "== is faster",
+            "equals() is deprecated"
+          ],
+          "correctAnswerIndex": 1,
+          "explanation": "== typically compares object references while equals() compares object values/content.",
+          "points": 10
+        },
+        {
+          "questionText": "What is a constructor?",
+          "options": [
+            "A method that destroys objects",
+            "A special method called when creating an object",
+            "A type of variable",
+            "A design pattern"
+          ],
+          "correctAnswerIndex": 1,
+          "explanation": "A constructor is a special method automatically called when an object is created to initialize it.",
+          "points": 10
+        },
+        {
+          "questionText": "What is the purpose of interfaces in OOP?",
+          "options": [
+            "Store data",
+            "Define a contract that classes must implement",
+            "Handle errors",
+            "Manage memory"
+          ],
+          "correctAnswerIndex": 1,
+          "explanation": "Interfaces define a contract specifying methods that implementing classes must provide.",
+          "points": 10
+        },
+        {
+          "questionText": "What does 'DRY' principle stand for?",
+          "options": [
+            "Don't Repeat Yourself",
+            "Do Review Your code",
+            "Debug Rigorously Yesterday",
+            "Design Reliable YAML"
+          ],
+          "correctAnswerIndex": 0,
+          "explanation": "DRY (Don't Repeat Yourself) encourages reducing code duplication and promoting reusability.",
+          "points": 10
+        },
+        {
+          "questionText": "What is recursion?",
+          "options": [
+            "A loop structure",
+            "A function that calls itself",
+            "An error handling technique",
+            "A sorting algorithm"
+          ],
+          "correctAnswerIndex": 1,
+          "explanation": "Recursion is a programming technique where a function calls itself to solve a problem by breaking it into smaller subproblems.",
+          "points": 10
+        },
+        {
+          "questionText": "What is the purpose of exception handling?",
+          "options": [
+            "Increase program speed",
+            "Manage and respond to runtime errors gracefully",
+            "Compile code faster",
+            "Reduce memory usage"
+          ],
+          "correctAnswerIndex": 1,
+          "explanation": "Exception handling allows programs to catch and handle errors gracefully instead of crashing.",
+          "points": 10
+        }
+      ]
+    }
+  }
+}

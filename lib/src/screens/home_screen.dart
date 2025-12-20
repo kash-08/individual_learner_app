@@ -1,3 +1,4 @@
+// lib/screens/home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/update_model.dart';
@@ -12,7 +13,7 @@ import '../components/update_card.dart';
 import 'course_catalog_screen.dart';
 import 'progress_updates_screen.dart';
 import 'achievements_screen.dart';
-import 'exams_screen.dart'; // ADD THIS IMPORT
+import 'package:individual_learner_app/src/screens/challenges_exams_screen.dart'; // UPDATED IMPORT
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -114,7 +115,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
-      appBar: _buildAppBar(), // Added app bar here
+      appBar: _buildAppBar(),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
@@ -133,7 +134,6 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 24),
               _buildBrowseCoursesSection(),
               const SizedBox(height: 24),
-              // REMOVED: Separate Weekly Updates section - now combined in Progress & Updates screen
               _buildQuickActionsSection(),
             ],
           ),
@@ -142,10 +142,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // NEW: App Bar with proper color contrast
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      backgroundColor: const Color(0xFF4361EE), // Blue background
+      backgroundColor: const Color(0xFF4361EE),
       elevation: 4,
       shadowColor: Colors.black.withOpacity(0.1),
       title: Column(
@@ -155,7 +154,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Text(
             'Learning Dashboard',
             style: TextStyle(
-              color: Colors.white, // White text for contrast
+              color: Colors.white,
               fontSize: 20,
               fontWeight: FontWeight.w600,
             ),
@@ -164,34 +163,21 @@ class _HomeScreenState extends State<HomeScreen> {
           Text(
             'Track your progress and continue learning',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.9), // Slightly transparent white
+              color: Colors.white.withOpacity(0.9),
               fontSize: 14,
               fontWeight: FontWeight.w400,
             ),
           ),
         ],
       ),
-      // Optional: Add actions if needed
-      // actions: [
-      //   IconButton(
-      //     icon: const Icon(Icons.notifications, color: Colors.white),
-      //     onPressed: () {},
-      //   ),
-      // ],
     );
   }
 
-  // REMOVED: _buildWeeklyUpdatesSection() - No longer needed as separate section
-
-  // REMOVED: _handleUpdateTap() - Moved to ProgressUpdatesScreen
-
-  // Resume Activity Section - Now serves as the main learning section
   Widget _buildResumeActivitySection() {
     return Consumer<CourseProvider>(
       builder: (context, courseProvider, child) {
         final resumeProgress = courseProvider.getResumeProgress();
 
-        // Show resume card if there's a valid session and not dismissed
         if (_showResumeCard && resumeProgress != null) {
           final course = resumeProgress['course'] as Course;
           final session = UserSession(
@@ -216,13 +202,11 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         }
 
-        // If no resume activity, show a prompt to start learning
         return _buildStartLearningPrompt(courseProvider);
       },
     );
   }
 
-  // Prompt to start learning when no resume activity is available
   Widget _buildStartLearningPrompt(CourseProvider courseProvider) {
     final enrolledCourses = courseProvider.enrolledCourses;
 
@@ -267,7 +251,6 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    // If there are enrolled courses but no recent activity
     final firstCourse = enrolledCourses.first;
     return Card(
       elevation: 4,
@@ -311,7 +294,6 @@ class _HomeScreenState extends State<HomeScreen> {
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 16),
-            // Progress bar
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -355,12 +337,10 @@ class _HomeScreenState extends State<HomeScreen> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  // Save session before navigating
                   courseProvider.updateCourseProgressWithSession(
                     firstCourse.id,
                     firstCourse.currentLesson,
                   );
-                  // Navigate to course screen
                 },
                 child: const Text('Start Learning'),
               ),
@@ -434,7 +414,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // UPDATED: AI Tools Section - Now includes Challenges & Exams
+  // UPDATED: AI Tools Section with Challenges & Exams
   Widget _buildAIToolsSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -474,7 +454,7 @@ class _HomeScreenState extends State<HomeScreen> {
           },
         ),
         const SizedBox(height: 8),
-        // NEW: Challenges & Exams Card
+        // CHANGED: Now navigates to ChallengesExamsScreen instead of ExamsScreen
         _buildToolCard(
           icon: Icons.quiz,
           title: 'Challenges & Exams',
@@ -484,7 +464,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => const ExamsScreen(),
+                builder: (context) => const ChallengesExamsScreen(),
               ),
             );
           },
@@ -555,7 +535,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Browse Courses Section - Replaced Registered Courses
   Widget _buildBrowseCoursesSection() {
     return Consumer<CourseProvider>(
       builder: (context, courseProvider, child) {
@@ -646,7 +625,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     width: double.infinity,
                     child: OutlinedButton(
                       onPressed: () {
-                        // Navigate to user's enrolled courses screen
                         _showEnrolledCourses(context);
                       },
                       style: OutlinedButton.styleFrom(
@@ -852,7 +830,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              // Navigate to course player
             },
             child: const Text('Continue'),
           ),
@@ -904,7 +881,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // UPDATED: Quick Actions Section - Now properly navigates to AchievementsScreen
   Widget _buildQuickActionsSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -919,7 +895,6 @@ class _HomeScreenState extends State<HomeScreen> {
             Expanded(
               child: OutlinedButton(
                 onPressed: () {
-                  // Navigate to combined Progress & Updates screen
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -942,7 +917,6 @@ class _HomeScreenState extends State<HomeScreen> {
             Expanded(
               child: ElevatedButton(
                 onPressed: () {
-                  // Navigate to achievements screen
                   Navigator.push(
                     context,
                     MaterialPageRoute(

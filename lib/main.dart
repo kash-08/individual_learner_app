@@ -1,14 +1,15 @@
+// lib/main.dart
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:individual_learner_app/src/providers/achievement_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:individual_learner_app/src/screens/home_screen.dart';
 import 'package:individual_learner_app/src/providers/course_provider.dart';
-import 'package:individual_learner_app/src/providers/updates_provider.dart'; // Add this import
+import 'package:individual_learner_app/src/providers/updates_provider.dart';
 import 'package:individual_learner_app/src/services/session_service.dart';
 import 'package:individual_learner_app/src/firebase/firebase_options.dart';
-import 'package:individual_learner_app/src/providers/exam_provider.dart';
+import 'package:individual_learner_app/src/services/assesment_service.dart';
+import 'package:individual_learner_app/src/services/firebase_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,6 +18,11 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // ✅ NEW: Initialize all sample data from JSON file
+  // This will create assessments, courses, exams, and weekly updates
+  // Only runs once - prevents duplicates by checking if data already exists
+  await FirebaseService.initializeSampleData();
 
   runApp(const MyApp());
 }
@@ -29,24 +35,24 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => CourseProvider()),
-        ChangeNotifierProvider(create: (_) => UpdatesProvider()), // Add this line
-        // Add this to your MultiProvider
+        ChangeNotifierProvider(create: (_) => UpdatesProvider()),
         ChangeNotifierProvider(create: (context) => AchievementProvider()),
-        Provider<SessionService>(
-          create: (_) => SessionService(),
-        ),
-        ChangeNotifierProvider(create: (_) => ExamProvider()),
+        Provider<SessionService>(create: (_) => SessionService()),
+        Provider<AssessmentService>(create: (_) => AssessmentService()),
       ],
       child: MaterialApp(
-        title: 'Learning App',
+        title: 'AI Learning App',
         theme: ThemeData(
           primaryColor: const Color(0xFF4361EE),
           scaffoldBackgroundColor: const Color(0xFFF8F9FA),
-
-          // Text Theme
           textTheme: const TextTheme(
             headlineLarge: TextStyle(
               fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF212529),
+            ),
+            headlineMedium: TextStyle(
+              fontSize: 24,
               fontWeight: FontWeight.bold,
               color: Color(0xFF212529),
             ),
@@ -71,19 +77,19 @@ class MyApp extends StatelessWidget {
               color: Color(0xFF6C757D),
             ),
           ),
-
-          // Card Theme
           cardTheme: const CardThemeData(
             elevation: 2,
           ),
-
-          // App Bar Theme
           appBarTheme: const AppBarTheme(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
+            backgroundColor: Color(0xFF4361EE),
+            elevation: 4,
+            iconTheme: IconThemeData(color: Colors.white),
+            titleTextStyle: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
           ),
-
-          // Elevated Button Theme
           elevatedButtonTheme: ElevatedButtonThemeData(
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF4361EE),
@@ -91,10 +97,27 @@ class MyApp extends StatelessWidget {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+              textStyle: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
-
+          outlinedButtonTheme: OutlinedButtonThemeData(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF4361EE),
+              side: const BorderSide(color: Color(0xFF4361EE)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+              textStyle: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
           useMaterial3: false,
         ),
         home: const HomeScreen(),

@@ -1,9 +1,12 @@
+// lib/services/firebase_service.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/services.dart' show rootBundle;
+import 'dart:convert';
 import '../models/course_model.dart';
 import '../models/user_model.dart';
 import '../models/update_model.dart';
-import '../models/exam_model.dart'; // Make sure this import is present
+import '../models/exam_model.dart';
 
 class FirebaseService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -17,16 +20,152 @@ class FirebaseService {
     return _auth.currentUser?.uid ?? 'demo-user-123';
   }
 
-  // Initialize sample data (run this once)
+  // ========================================================================
+  // MAIN INITIALIZATION - Call this in main.dart
+  // ========================================================================
+
+  /// Initialize ALL sample data (courses, exams, weekly updates, assessments from JSON)
   static Future<void> initializeSampleData() async {
+    try {
+      print('🚀 Initializing all sample data...');
+      print('=' * 60);
+
+      // Initialize courses
+      await _initializeCourses();
+
+      // Initialize weekly updates
+      await initializeWeeklyUpdates();
+
+      // Initialize exams data
+      await initializeExamsData();
+
+      // NEW: Initialize assessments from JSON file
+      await initializeAssessmentsFromJson();
+
+      print('');
+      print('=' * 60);
+      print('✅ All sample data initialized successfully!');
+    } catch (e) {
+      print('❌ Error initializing sample data: $e');
+    }
+  }
+
+  // ========================================================================
+  // ASSESSMENTS FROM JSON FILE - NEW METHOD
+  // ========================================================================
+
+  /// Load assessments from JSON file and create in Firestore
+  static Future<void> initializeAssessmentsFromJson() async {
+    try {
+      print('');
+      print('📖 Loading assessments from JSON file...');
+
+      // Check if assessments already exist
+      final assessmentsSnapshot = await _firestore.collection('assessments').limit(1).get();
+      if (assessmentsSnapshot.docs.isNotEmpty) {
+        print('✅ Assessments already exist in database, skipping...');
+        return;
+      }
+
+      // Load JSON file from assets
+      final jsonString = await rootBundle.loadString('firebase_sample_data.json');
+      final Map<String, dynamic> jsonData = json.decode(jsonString);
+
+      if (!jsonData.containsKey('assessments')) {
+        print('⚠️ No assessments found in JSON file');
+        return;
+      }
+
+      final assessmentsMap = jsonData['assessments'] as Map<String, dynamic>;
+
+      int successCount = 0;
+      int errorCount = 0;
+      int totalQuestions = 0;
+
+      print('📝 Processing ${assessmentsMap.length} assessments from JSON...');
+
+      for (final entry in assessmentsMap.entries) {
+        final assessmentId = entry.key;
+        final assessmentData = entry.value as Map<String, dynamic>;
+
+        try {
+          // Extract questions
+          final questions = assessmentData['questions'] as List<dynamic>? ?? [];
+          totalQuestions += questions.length;
+
+          // Prepare assessment document (without questions)
+          final docData = {
+            'title': assessmentData['title'],
+            'description': assessmentData['description'],
+            'type': assessmentData['type'],
+            'category': assessmentData['category'],
+            'difficulty': assessmentData['difficulty'],
+            'timeLimit': assessmentData['duration'] ?? assessmentData['timeLimit'] ?? 30,
+            'totalQuestions': assessmentData['totalQuestions'] ?? questions.length,
+            'passingScore': (assessmentData['passingScore'] ?? 70).toDouble(),
+            'pointsPerQuestion': assessmentData['pointsPerQuestion'] ?? 10,
+            'tags': assessmentData['tags'] ?? [],
+            'isActive': assessmentData['isActive'] ?? true,
+            'createdAt': FieldValue.serverTimestamp(),
+          };
+
+          // Add assessment document to Firestore
+          final docRef = await _firestore.collection('assessments').add(docData);
+
+          // Add questions as subcollection
+          int questionOrder = 1;
+          for (final question in questions) {
+            final questionData = {
+              'questionText': question['questionText'],
+              'options': question['options'] ?? [],
+              'correctAnswer': question['correctAnswerIndex'] ?? question['correctAnswer'] ?? 0,
+              'explanation': question['explanation'],
+              'points': question['points'] ?? 10,
+              'order': questionOrder++,
+              'codeTemplate': question['codeTemplate'],
+              'testCases': question['testCases'] ?? [],
+            };
+
+            await docRef.collection('questions').add(questionData);
+          }
+
+          successCount++;
+          print('  ✅ ${assessmentData['title']} (${questions.length} questions)');
+        } catch (e) {
+          errorCount++;
+          print('  ❌ Error creating $assessmentId: $e');
+        }
+      }
+
+      print('');
+      print('📊 Assessments Summary:');
+      print('   ✅ Created: $successCount assessments');
+      print('   📝 Total questions: $totalQuestions');
+      if (errorCount > 0) print('   ❌ Errors: $errorCount');
+    } catch (e) {
+      print('');
+      print('❌ Error loading assessments from JSON: $e');
+      print('');
+      print('⚠️  TROUBLESHOOTING:');
+      print('   1. Make sure firebase_sample_data.json is in your project root');
+      print('   2. Add it to pubspec.yaml under assets:');
+      print('      assets:');
+      print('        - firebase_sample_data.json');
+      print('   3. Run: flutter pub get');
+      print('   4. Restart the app');
+    }
+  }
+
+  // ========================================================================
+  // COURSES INITIALIZATION
+  // ========================================================================
+
+  static Future<void> _initializeCourses() async {
     try {
       // Check if courses already exist
       final coursesSnapshot = await _firestore.collection('courses').get();
       if (coursesSnapshot.docs.isNotEmpty) {
         print('Courses already exist, skipping initialization');
-
-        // Initialize weekly updates even if courses exist
-        await initializeWeeklyUpdates();
         return;
       }
 
@@ -94,19 +233,16 @@ class FirebaseService {
         await _firestore.collection('courses').add(courseData);
       }
 
-      // Initialize weekly updates
-      await initializeWeeklyUpdates();
-
-      // Initialize exams data
-      await initializeExamsData();
-
-      print('Sample courses, weekly updates, and exams initialized successfully!');
+      print('✅ Sample courses initialized successfully!');
     } catch (e) {
-      print('Error initializing sample data: $e');
+      print('❌ Error initializing courses: $e');
     }
   }
 
-  // NEW: Initialize exams data
+  // ========================================================================
+  // EXAMS INITIALIZATION
+  // ========================================================================
+
   static Future<void> initializeExamsData() async {
     try {
       final examsSnapshot = await _firestore.collection('exams').get();
@@ -176,13 +312,82 @@ class FirebaseService {
         await _firestore.collection('exams').add(examData);
       }
 
-      print('Sample exams initialized successfully!');
+      print('✅ Sample exams initialized successfully!');
     } catch (e) {
-      print('Error initializing exams data: $e');
+      print('❌ Error initializing exams data: $e');
     }
   }
 
-  // NEW: Get all exams from Firebase
+  // ========================================================================
+  // WEEKLY UPDATES INITIALIZATION
+  // ========================================================================
+
+  static Future<void> initializeWeeklyUpdates() async {
+    try {
+      final updatesSnapshot = await _firestore.collection('weekly_updates').get();
+      if (updatesSnapshot.docs.isNotEmpty) {
+        print('Weekly updates already exist, skipping initialization');
+        return;
+      }
+
+      final sampleUpdates = [
+        {
+          'title': 'New Flutter Course: Advanced State Management',
+          'description': 'Learn advanced state management techniques with Riverpod and Bloc',
+          'type': 'course',
+          'imageUrl': 'https://via.placeholder.com/300x200/4361EE/FFFFFF?text=Flutter+Advanced',
+          'publishDate': FieldValue.serverTimestamp(),
+          'category': 'Mobile Development',
+          'author': 'Jane Smith',
+          'readTime': '8 hours',
+          'isNew': true,
+          'isActive': true,
+          'metadata': {
+            'courseId': 'flutter-advanced-2024',
+            'difficulty': 'Advanced',
+            'enrollmentCount': 1247,
+          },
+        },
+        {
+          'title': 'The Future of AI in Mobile Development',
+          'description': 'Exploring how AI is transforming mobile app development',
+          'type': 'article',
+          'imageUrl': 'https://via.placeholder.com/300x200/3A0CA3/FFFFFF?text=AI+Future',
+          'publishDate': FieldValue.serverTimestamp(),
+          'category': 'AI & ML',
+          'author': 'Dr. Alex Chen',
+          'readTime': '8 min',
+          'isNew': true,
+          'isActive': true,
+        },
+        {
+          'title': 'React Native 2024 Updates',
+          'description': 'Major updates and new features in the latest React Native release',
+          'type': 'news',
+          'imageUrl': 'https://via.placeholder.com/300x200/7209B7/FFFFFF?text=React+Native',
+          'publishDate': FieldValue.serverTimestamp(),
+          'category': 'Mobile Development',
+          'author': 'John Doe',
+          'readTime': '5 min',
+          'isNew': true,
+          'isActive': true,
+        },
+      ];
+
+      for (final updateData in sampleUpdates) {
+        await _firestore.collection('weekly_updates').add(updateData);
+      }
+
+      print('✅ Weekly updates initialized successfully!');
+    } catch (e) {
+      print('❌ Error initializing weekly updates: $e');
+    }
+  }
+
+  // ========================================================================
+  // EXAM OPERATIONS
+  // ========================================================================
+
   static Future<List<Exam>> getAllExams() async {
     try {
       if (!_isFirebaseInitialized) {
@@ -223,10 +428,8 @@ class FirebaseService {
     }
   }
 
-  // NEW: Save exam result to Firebase - THIS IS THE METHOD YOU'RE MISSING
   static Future<void> saveExamResult(ExamResult result) async {
     try {
-      // If Firebase is not initialized, skip
       if (!_isFirebaseInitialized) {
         print('Firebase not initialized, skipping exam result save');
         return;
@@ -238,7 +441,6 @@ class FirebaseService {
         return;
       }
 
-      // Save to Firestore
       await _firestore
           .collection('users')
           .doc(userId)
@@ -260,23 +462,17 @@ class FirebaseService {
       });
 
       print('Exam result saved to Firebase: ${result.examTitle}');
-
-      // Also update user statistics
       await _updateUserExamStats(userId, result);
-
     } catch (e) {
       print('Error saving exam result to Firebase: $e');
-      // Don't throw - let the app continue with local storage
     }
   }
 
-  // NEW: Update user exam statistics
   static Future<void> _updateUserExamStats(String userId, ExamResult result) async {
     try {
       final userRef = _firestore.collection('users').doc(userId);
       final statsRef = userRef.collection('stats').doc('exams');
 
-      // Get current stats
       final statsDoc = await statsRef.get();
       Map<String, dynamic> currentStats = {};
 
@@ -284,17 +480,14 @@ class FirebaseService {
         currentStats = statsDoc.data() as Map<String, dynamic>;
       }
 
-      // Update statistics
       final totalExams = (currentStats['totalExams'] ?? 0) + 1;
       final totalPassed = (currentStats['totalPassed'] ?? 0) + (result.passed ? 1 : 0);
       final totalScore = (currentStats['totalScore'] ?? 0.0) + result.scorePercentage;
       final avgScore = totalScore / totalExams;
 
-      // Update best score if applicable
       final bestScore = currentStats['bestScore'] ?? 0.0;
       final newBestScore = result.scorePercentage > bestScore ? result.scorePercentage : bestScore;
 
-      // Update stats document
       await statsRef.set({
         'totalExams': totalExams,
         'totalPassed': totalPassed,
@@ -307,13 +500,11 @@ class FirebaseService {
         'lastExamDate': Timestamp.fromDate(result.completedAt),
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
-
     } catch (e) {
       print('Error updating user exam stats: $e');
     }
   }
 
-  // NEW: Get user exam results from Firebase
   static Future<List<ExamResult>> getUserExamResults(String userId) async {
     try {
       if (!_isFirebaseInitialized || userId.isEmpty) {
@@ -325,7 +516,7 @@ class FirebaseService {
           .doc(userId)
           .collection('examResults')
           .orderBy('createdAt', descending: true)
-          .limit(50) // Limit to last 50 results
+          .limit(50)
           .get();
 
       return querySnapshot.docs.map((doc) {
@@ -355,7 +546,6 @@ class FirebaseService {
     }
   }
 
-  // NEW: Get user exam statistics from Firebase
   static Future<Map<String, dynamic>> getUserExamStatistics(String userId) async {
     try {
       if (!_isFirebaseInitialized || userId.isEmpty) {
@@ -385,15 +575,15 @@ class FirebaseService {
           'averageScore': (data['averageScore'] ?? 0).toDouble(),
           'bestScore': (data['bestScore'] ?? 0).toDouble(),
         };
-      } else {
-        return {
-          'totalExamsTaken': 0,
-          'passedExams': 0,
-          'failedExams': 0,
-          'averageScore': 0,
-          'bestScore': 0,
-        };
       }
+
+      return {
+        'totalExamsTaken': 0,
+        'passedExams': 0,
+        'failedExams': 0,
+        'averageScore': 0,
+        'bestScore': 0,
+      };
     } catch (e) {
       print('Error getting user exam statistics: $e');
       return {
@@ -406,7 +596,6 @@ class FirebaseService {
     }
   }
 
-  // NEW: Get exam questions from Firebase
   static Future<List<Question>> getExamQuestions(String examId) async {
     try {
       if (!_isFirebaseInitialized || examId.isEmpty) {
@@ -443,7 +632,10 @@ class FirebaseService {
     }
   }
 
-  // NEW: Weekly Updates Methods
+  // ========================================================================
+  // WEEKLY UPDATES OPERATIONS
+  // ========================================================================
+
   static Future<List<Update>> getWeeklyUpdates() async {
     try {
       final snapshot = await _firestore
@@ -480,102 +672,10 @@ class FirebaseService {
     }
   }
 
-  static Future<void> initializeWeeklyUpdates() async {
-    try {
-      final updatesSnapshot = await _firestore.collection('weekly_updates').get();
-      if (updatesSnapshot.docs.isNotEmpty) {
-        print('Weekly updates already exist, skipping initialization');
-        return;
-      }
+  // ========================================================================
+  // COURSE OPERATIONS
+  // ========================================================================
 
-      final sampleUpdates = [
-        {
-          'title': 'New Flutter Course: Advanced State Management',
-          'description': 'Learn advanced state management techniques with Riverpod and Bloc',
-          'type': 'course',
-          'imageUrl': 'https://via.placeholder.com/300x200/4361EE/FFFFFF?text=Flutter+Advanced',
-          'publishDate': FieldValue.serverTimestamp(),
-          'category': 'Mobile Development',
-          'author': 'Jane Smith',
-          'readTime': '8 hours',
-          'isNew': true,
-          'isActive': true,
-          'metadata': {
-            'courseId': 'flutter-advanced-2024',
-            'difficulty': 'Advanced',
-            'enrollmentCount': 1247,
-          },
-        },
-        {
-          'title': 'The Future of AI in Mobile Development',
-          'description': 'Exploring how AI is transforming mobile app development and user experiences',
-          'type': 'article',
-          'imageUrl': 'https://via.placeholder.com/300x200/3A0CA3/FFFFFF?text=AI+Future',
-          'publishDate': FieldValue.serverTimestamp(),
-          'category': 'AI & ML',
-          'author': 'Dr. Alex Chen',
-          'readTime': '8 min',
-          'isNew': true,
-          'isActive': true,
-          'metadata': {
-            'readCount': 2843,
-            'likes': 156,
-          },
-        },
-        {
-          'title': 'React Native 2024 Updates',
-          'description': 'Major updates and new features in the latest React Native release',
-          'type': 'news',
-          'imageUrl': 'https://via.placeholder.com/300x200/7209B7/FFFFFF?text=React+Native',
-          'publishDate': FieldValue.serverTimestamp(),
-          'category': 'Mobile Development',
-          'author': 'John Doe',
-          'readTime': '5 min',
-          'isNew': true,
-          'isActive': true,
-        },
-        {
-          'title': 'Python for Machine Learning: Complete Guide',
-          'description': 'Comprehensive guide to machine learning with Python and TensorFlow',
-          'type': 'course',
-          'imageUrl': 'https://via.placeholder.com/300x200/4CC9F0/FFFFFF?text=Python+ML',
-          'publishDate': FieldValue.serverTimestamp(),
-          'category': 'AI & ML',
-          'author': 'Mike Johnson',
-          'readTime': '12 hours',
-          'isNew': false,
-          'isActive': true,
-          'metadata': {
-            'courseId': 'python-ml-2024',
-            'difficulty': 'Intermediate',
-            'enrollmentCount': 3562,
-          },
-        },
-        {
-          'title': 'Web Development Trends 2024',
-          'description': 'Top web development trends and technologies to watch this year',
-          'type': 'article',
-          'imageUrl': 'https://via.placeholder.com/300x200/F72585/FFFFFF?text=Web+Trends',
-          'publishDate': FieldValue.serverTimestamp(),
-          'category': 'Web Development',
-          'author': 'Sarah Wilson',
-          'readTime': '10 min',
-          'isNew': true,
-          'isActive': true,
-        },
-      ];
-
-      for (final updateData in sampleUpdates) {
-        await _firestore.collection('weekly_updates').add(updateData);
-      }
-
-      print('Weekly updates initialized successfully!');
-    } catch (e) {
-      print('Error initializing weekly updates: $e');
-    }
-  }
-
-  // Course Operations (Your existing methods remain unchanged)
   static Future<List<Course>> getAllCourses() async {
     try {
       final snapshot = await _firestore
@@ -608,11 +708,9 @@ class FirebaseService {
 
   static Future<List<Course>> getEnrolledCourses(String userId) async {
     try {
-      // Get user document
       final userDoc = await _firestore.collection('users').doc(userId).get();
 
       if (!userDoc.exists) {
-        // Create user document if it doesn't exist
         await _firestore.collection('users').doc(userId).set({
           'name': 'Alex',
           'email': 'alex@example.com',
@@ -630,7 +728,6 @@ class FirebaseService {
 
       if (enrolledCourseIds.isEmpty) return [];
 
-      // Get enrolled courses
       final enrolledCourses = <Course>[];
 
       for (final courseId in enrolledCourseIds) {
@@ -674,13 +771,11 @@ class FirebaseService {
     try {
       final batch = _firestore.batch();
 
-      // Add to user's enrolled courses
       final userRef = _firestore.collection('users').doc(userId);
       batch.update(userRef, {
         'enrolledCourses': FieldValue.arrayUnion([courseId])
       });
 
-      // Create progress document
       final progressRef = _firestore
           .collection('userProgress')
           .doc(userId)
@@ -707,13 +802,11 @@ class FirebaseService {
     try {
       final batch = _firestore.batch();
 
-      // Remove from user's enrolled courses
       final userRef = _firestore.collection('users').doc(userId);
       batch.update(userRef, {
         'enrolledCourses': FieldValue.arrayRemove([courseId])
       });
 
-      // Remove progress document
       final progressRef = _firestore
           .collection('userProgress')
           .doc(userId)
@@ -755,7 +848,10 @@ class FirebaseService {
     }
   }
 
-  // Helper method to ensure user document exists
+  // ========================================================================
+  // USER OPERATIONS
+  // ========================================================================
+
   static Future<void> ensureUserDocument(String userId) async {
     try {
       final userDoc = await _firestore.collection('users').doc(userId).get();
@@ -772,7 +868,6 @@ class FirebaseService {
         });
         print('✅ Created user document for: $userId');
       } else {
-        // Update last accessed time
         await _firestore.collection('users').doc(userId).update({
           'lastUpdated': FieldValue.serverTimestamp(),
         });
@@ -782,12 +877,10 @@ class FirebaseService {
     }
   }
 
-  // Method to clear all data and start fresh (for testing)
   static Future<void> clearUserData(String userId) async {
     try {
       print('🧹 Clearing all user data for: $userId');
 
-      // Delete enrolled courses
       final enrolledSnapshot = await _firestore
           .collection('users')
           .doc(userId)
@@ -798,7 +891,6 @@ class FirebaseService {
         await doc.reference.delete();
       }
 
-      // Delete progress data
       final progressSnapshot = await _firestore
           .collection('userProgress')
           .doc(userId)
@@ -813,5 +905,34 @@ class FirebaseService {
     } catch (e) {
       print('❌ Error clearing user data: $e');
     }
+  }
+
+  // ========================================================================
+  // TESTING/DEBUGGING METHODS
+  // ========================================================================
+
+  static Future<void> clearAllAssessments() async {
+    try {
+      print('🧹 Clearing all assessment data...');
+
+      final assessments = await _firestore.collection('assessments').get();
+      for (final doc in assessments.docs) {
+        final questions = await doc.reference.collection('questions').get();
+        for (final questionDoc in questions.docs) {
+          await questionDoc.reference.delete();
+        }
+        await doc.reference.delete();
+      }
+
+      print('✅ All assessment data cleared');
+    } catch (e) {
+      print('❌ Error clearing assessment data: $e');
+    }
+  }
+
+  static Future<void> forceReinitialize() async {
+    print('🔄 Forcing re-initialization...');
+    await clearAllAssessments();
+    await initializeAssessmentsFromJson();
   }
 }
