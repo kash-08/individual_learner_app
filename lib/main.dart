@@ -1,15 +1,18 @@
 // lib/main.dart
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:individual_learner_app/src/providers/achievement_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:individual_learner_app/src/providers/auth_provider.dart';
+import 'package:individual_learner_app/src/providers/achievement_provider.dart';
+import 'package:individual_learner_app/src/providers/exam_provider.dart';
 import 'package:individual_learner_app/src/screens/home_screen.dart';
+import 'package:individual_learner_app/src/screens/login_screen.dart';
 import 'package:individual_learner_app/src/providers/course_provider.dart';
 import 'package:individual_learner_app/src/providers/updates_provider.dart';
 import 'package:individual_learner_app/src/services/session_service.dart';
 import 'package:individual_learner_app/src/firebase/firebase_options.dart';
-import 'package:individual_learner_app/src/services/assesment_service.dart';
 import 'package:individual_learner_app/src/services/firebase_service.dart';
+import 'package:individual_learner_app/src/services/assesment_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,9 +22,7 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // ✅ NEW: Initialize all sample data from JSON file
-  // This will create assessments, courses, exams, and weekly updates
-  // Only runs once - prevents duplicates by checking if data already exists
+  // ✅ Initialize Firebase sample data (courses, weekly updates)
   await FirebaseService.initializeSampleData();
 
   runApp(const MyApp());
@@ -34,9 +35,22 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        // Authentication Provider - ADD THIS FIRST
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+
+        // Course Management
         ChangeNotifierProvider(create: (_) => CourseProvider()),
+
+        // Weekly Updates
         ChangeNotifierProvider(create: (_) => UpdatesProvider()),
+
+        // Achievements
         ChangeNotifierProvider(create: (context) => AchievementProvider()),
+
+        // Quiz/Exam Management
+        ChangeNotifierProvider(create: (_) => ExamProvider()),
+
+        // Services
         Provider<SessionService>(create: (_) => SessionService()),
         Provider<AssessmentService>(create: (_) => AssessmentService()),
       ],
@@ -120,9 +134,32 @@ class MyApp extends StatelessWidget {
           ),
           useMaterial3: false,
         ),
-        home: const HomeScreen(),
+        // Changed from const HomeScreen() to AuthWrapper
+        home: const AuthWrapper(),
         debugShowCheckedModeBanner: false,
       ),
     );
+  }
+}
+
+// NEW: Authentication Wrapper Widget
+class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+
+    // Show loading screen while checking auth state
+    if (authProvider.isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    // Redirect based on auth state
+    return authProvider.user != null ? const HomeScreen() : const LoginScreen();
   }
 }

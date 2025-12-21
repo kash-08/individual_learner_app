@@ -1,147 +1,128 @@
-class Exam {
+// Add to your existing exam_model.dart or create if doesn't exist
+class QuizQuestion {
   final String id;
-  final String title;
-  final String description;
+  final String question;
+  final List<String> options;
+  final int correctAnswerIndex;
+  final String explanation;
   final String category;
-  final String difficulty;
-  final int totalQuestions;
-  final int timeLimit; // in minutes
-  final double passingScore; // percentage
-  final DateTime createdAt;
-  final List<String> tags;
-  final bool isActive;
-  final String examType; // 'quiz', 'coding', 'mock_exam'
-
-  Exam({
-    required this.id,
-    required this.title,
-    required this.description,
-    required this.category,
-    required this.difficulty,
-    required this.totalQuestions,
-    required this.timeLimit,
-    required this.passingScore,
-    required this.createdAt,
-    required this.tags,
-    required this.isActive,
-    required this.examType,
-  });
-}
-
-class Question {
-  final String id;
-  final String examId;
-  final String questionText;
-  final String questionType; // 'multiple_choice', 'coding', 'true_false'
-  final List<String> options; // For multiple choice
-  final int correctOptionIndex; // For multiple choice
-  final String? correctCode; // For coding questions
-  final String? codingLanguage; // For coding questions
-  final String? hint;
   final int points;
+  final String type; // 'quiz', 'coding', 'exam'
+  final String? codeSnippet; // For coding challenges
 
-  Question({
+  QuizQuestion({
     required this.id,
-    required this.examId,
-    required this.questionText,
-    required this.questionType,
-    this.options = const [],
-    this.correctOptionIndex = -1,
-    this.correctCode,
-    this.codingLanguage,
-    this.hint,
-    required this.points,
+    required this.question,
+    required this.options,
+    required this.correctAnswerIndex,
+    required this.explanation,
+    required this.category,
+    this.points = 10,
+    this.type = 'quiz',
+    this.codeSnippet,
   });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'question': question,
+      'options': options,
+      'correctAnswerIndex': correctAnswerIndex,
+      'explanation': explanation,
+      'category': category,
+      'points': points,
+      'type': type,
+      'codeSnippet': codeSnippet,
+    };
+  }
+
+  factory QuizQuestion.fromMap(Map<String, dynamic> map) {
+    return QuizQuestion(
+      id: map['id'] ?? '',
+      question: map['question'] ?? '',
+      options: List<String>.from(map['options'] ?? []),
+      correctAnswerIndex: map['correctAnswerIndex'] ?? 0,
+      explanation: map['explanation'] ?? '',
+      category: map['category'] ?? 'General',
+      points: map['points'] ?? 10,
+      type: map['type'] ?? 'quiz',
+      codeSnippet: map['codeSnippet'],
+    );
+  }
 }
 
-class ExamResult {
+class QuizResult {
   final String id;
   final String userId;
-  final String examId;
-  final String examTitle;
-  final DateTime completedAt;
+  final String quizId;
+  final String quizName;
+  final String quizType; // 'quiz', 'coding_challenge', 'mock_exam'
+  final int score;
   final int totalQuestions;
   final int correctAnswers;
-  final double scorePercentage;
-  final int timeTaken; // in seconds
-  final bool passed;
-  final Map<String, dynamic> detailedResults;
-  final String examType;
+  final int timeSpent; // in seconds
+  final DateTime completedAt;
+  final Map<String, dynamic>? details;
+  final List<Map<String, dynamic>>? questionResults;
 
-  ExamResult({
+  QuizResult({
     required this.id,
     required this.userId,
-    required this.examId,
-    required this.examTitle,
-    required this.completedAt,
+    required this.quizId,
+    required this.quizName,
+    required this.quizType,
+    required this.score,
     required this.totalQuestions,
     required this.correctAnswers,
-    required this.scorePercentage,
-    required this.timeTaken,
-    required this.passed,
-    required this.detailedResults,
-    required this.examType,
+    required this.timeSpent,
+    required this.completedAt,
+    this.details,
+    this.questionResults,
   });
-}
 
-class CodingChallenge {
-  final String id;
-  final String title;
-  final String description;
-  final String difficulty;
-  final String language;
-  final String starterCode;
-  final List<TestCase> testCases;
-  final String solution;
-  final int timeLimit; // in minutes
-  final int points;
-  final List<String> tags;
+  double get percentage => (correctAnswers / totalQuestions) * 100;
+  String get grade {
+    final percent = percentage;
+    if (percent >= 90) return 'A';
+    if (percent >= 80) return 'B';
+    if (percent >= 70) return 'C';
+    if (percent >= 60) return 'D';
+    return 'F';
+  }
 
-  CodingChallenge({
-    required this.id,
-    required this.title,
-    required this.description,
-    required this.difficulty,
-    required this.language,
-    required this.starterCode,
-    required this.testCases,
-    required this.solution,
-    required this.timeLimit,
-    required this.points,
-    required this.tags,
-  });
-}
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'userId': userId,
+      'quizId': quizId,
+      'quizName': quizName,
+      'quizType': quizType,
+      'score': score,
+      'totalQuestions': totalQuestions,
+      'correctAnswers': correctAnswers,
+      'timeSpent': timeSpent,
+      'completedAt': completedAt.toIso8601String(),
+      'details': details,
+      'questionResults': questionResults,
+    };
+  }
 
-class TestCase {
-  final String input;
-  final String expectedOutput;
-  final bool isHidden;
-
-  TestCase({
-    required this.input,
-    required this.expectedOutput,
-    this.isHidden = false,
-  });
-}
-
-class UserChallengeProgress {
-  final String userId;
-  final String challengeId;
-  final String lastSubmittedCode;
-  final bool completed;
-  final int attempts;
-  final DateTime? completedAt;
-  final double bestScore;
-  final List<DateTime> attemptHistory;
-
-  UserChallengeProgress({
-    required this.userId,
-    required this.challengeId,
-    required this.lastSubmittedCode,
-    required this.completed,
-    required this.attempts,
-    this.completedAt,
-    required this.bestScore,
-    required this.attemptHistory,
-  });
+  factory QuizResult.fromMap(Map<String, dynamic> map) {
+    return QuizResult(
+      id: map['id'] ?? '',
+      userId: map['userId'] ?? '',
+      quizId: map['quizId'] ?? '',
+      quizName: map['quizName'] ?? '',
+      quizType: map['quizType'] ?? 'quiz',
+      score: map['score'] ?? 0,
+      totalQuestions: map['totalQuestions'] ?? 0,
+      correctAnswers: map['correctAnswers'] ?? 0,
+      timeSpent: map['timeSpent'] ?? 0,
+      completedAt: DateTime.parse(map['completedAt']),
+      details: map['details'],
+      questionResults: map['questionResults'] != null
+          ? List<Map<String, dynamic>>.from(map['questionResults'])
+          : null,
+    );
+  }
 }

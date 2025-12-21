@@ -1,39 +1,53 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:intl/intl.dart';
-import 'package:individual_learner_app/src/models/result_model.dart';
-import 'package:individual_learner_app/src/services/assesment_service.dart';
+import '../services/assesment_service.dart';
+import '../models/exam_model.dart';
 
-class ResultsTab extends StatelessWidget {
+class ResultsTab extends StatefulWidget {
+  // Make userId optional with a default value
+  final String? userId;
+
+  const ResultsTab({Key? key, this.userId}) : super(key: key);
+
+  @override
+  _ResultsTabState createState() => _ResultsTabState();
+}
+
+class _ResultsTabState extends State<ResultsTab> {
   final AssessmentService _assessmentService = AssessmentService();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  String? _currentUserId;
 
-  ResultsTab({Key? key}) : super(key: key);
+  @override
+  void initState() {
+    super.initState();
+    _currentUserId = _auth.currentUser?.uid;
+  }
 
   @override
   Widget build(BuildContext context) {
-    String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+    // Use widget.userId if provided, otherwise use current user's ID
+    final userId = widget.userId ?? _currentUserId;
 
-    if (userId.isEmpty) {
+    if (userId == null) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.login, size: 64, color: Colors.grey[400]),
+            Icon(Icons.error_outline, size: 64, color: Colors.grey),
             SizedBox(height: 16),
             Text(
               'Please login to view results',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(color: Colors.grey),
             ),
           ],
         ),
       );
     }
 
-    return StreamBuilder<List<AssessmentResult>>(
-      stream: _assessmentService.getUserResults(userId),
+    return StreamBuilder<List<QuizResult>>(
+      stream: _assessmentService.getUserResultsByUserId(userId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(child: CircularProgressIndicator());
@@ -44,398 +58,273 @@ class ResultsTab extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
+                Icon(Icons.error, color: Colors.red, size: 64),
                 SizedBox(height: 16),
                 Text(
                   'Error loading results',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey[600],
-                  ),
+                  style: TextStyle(color: Colors.red),
+                ),
+                SizedBox(height: 8),
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {});
+                  },
+                  child: Text('Retry'),
                 ),
               ],
             ),
           );
         }
 
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+        final results = snapshot.data ?? [];
+
+        if (results.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.assessment_outlined,
-                  size: 80,
-                  color: Colors.grey[400],
-                ),
+                Icon(Icons.quiz_outlined, size: 64, color: Colors.grey),
                 SizedBox(height: 16),
                 Text(
-                  'No results yet',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey[700],
-                  ),
+                  'No quiz results yet',
+                  style: TextStyle(color: Colors.grey),
                 ),
                 SizedBox(height: 8),
-                Text(
-                  'Complete assessments to see your results here',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[500],
-                  ),
+                ElevatedButton(
+                  onPressed: () {
+                    // Navigate to quizzes - you can adjust this based on your navigation
+                    // Navigator.pushNamed(context, '/challenges');
+                  },
+                  child: Text('Take a Quiz'),
                 ),
               ],
             ),
           );
         }
 
-        List<AssessmentResult> results = snapshot.data!;
-
-        return ListView.builder(
-          padding: EdgeInsets.all(16),
-          itemCount: results.length,
-          itemBuilder: (context, index) {
-            AssessmentResult result = results[index];
-            return _buildResultCard(context, result);
+        return RefreshIndicator(
+          onRefresh: () async {
+            setState(() {});
           },
+          child: ListView.builder(
+            padding: EdgeInsets.all(16),
+            itemCount: results.length,
+            itemBuilder: (context, index) {
+              final result = results[index];
+              return _buildResultCard(context, result);
+            },
+          ),
         );
       },
     );
   }
 
-  Widget _buildResultCard(BuildContext context, AssessmentResult result) {
-    Color scoreColor = result.passed ? Colors.green : Colors.red;
-
+  Widget _buildResultCard(BuildContext context, QuizResult result) {
     return Card(
-      elevation: 2,
+      elevation: 3,
       margin: EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: scoreColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        onTap: () {
+          // Navigate to result details
+          // Navigator.push(
+          //   context,
+          //   MaterialPageRoute(
+          //     builder: (context) => ResultDetailsScreen(result: result),
+          //   ),
+          // );
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Score circle
+              Container(
+                width: 70,
+                height: 70,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [
+                      _getGradeColor(result.grade),
+                      _getGradeColor(result.grade).withOpacity(0.7),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                  child: Icon(
-                    result.passed ? Icons.check_circle : Icons.cancel,
-                    color: scoreColor,
-                    size: 24,
-                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _getGradeColor(result.grade).withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
                 ),
-                SizedBox(width: 12),
-                Expanded(
+                child: Center(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        result.assessmentTitle,
+                        '${result.percentage.toStringAsFixed(0)}%',
                         style: TextStyle(
-                          fontSize: 16,
+                          color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          color: Colors.grey[800],
+                          fontSize: 16,
                         ),
                       ),
-                      SizedBox(height: 4),
                       Text(
-                        DateFormat('MMM dd, yyyy • hh:mm a')
-                            .format(result.completedAt),
+                        result.grade,
                         style: TextStyle(
+                          color: Colors.white,
                           fontSize: 12,
-                          color: Colors.grey[600],
                         ),
                       ),
                     ],
                   ),
                 ),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: scoreColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    '${result.scorePercentage.toStringAsFixed(1)}%',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: scoreColor,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            SizedBox(height: 16),
-
-            // Stats
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatChip(
-                    Icons.check_circle,
-                    '${result.correctAnswers}',
-                    'Correct',
-                    Colors.green,
-                  ),
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: _buildStatChip(
-                    Icons.cancel,
-                    '${result.wrongAnswers}',
-                    'Wrong',
-                    Colors.red,
-                  ),
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: _buildStatChip(
-                    Icons.remove_circle,
-                    '${result.skippedQuestions}',
-                    'Skipped',
-                    Colors.orange,
-                  ),
-                ),
-              ],
-            ),
-
-            SizedBox(height: 12),
-
-            // Additional info
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.timer, size: 16, color: Colors.grey[600]),
-                    SizedBox(width: 4),
-                    Text(
-                      '${_formatDuration(result.timeTaken)}',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    Icon(Icons.star, size: 16, color: Colors.amber),
-                    SizedBox(width: 4),
-                    Text(
-                      '${result.earnedPoints}/${result.totalPoints} pts',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-
-            SizedBox(height: 12),
-
-            // View details button
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: () {
-                  // Navigate to detailed results view
-                  _showResultDetails(context, result);
-                },
-                style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: Colors.blue[700]!),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: Text('View Details'),
               ),
-            ),
-          ],
+              SizedBox(width: 16),
+              // Result details
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      result.quizName,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Chip(
+                          label: Text(
+                            '${result.correctAnswers}/${result.totalQuestions}',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          backgroundColor: Colors.green[100],
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        SizedBox(width: 8),
+                        Chip(
+                          label: Text(
+                            result.quizType,
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          backgroundColor: _getTypeColor(result.quizType),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(Icons.score, size: 14, color: Colors.grey[600]),
+                        SizedBox(width: 4),
+                        Text(
+                          'Score: ${result.score}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        SizedBox(width: 16),
+                        Icon(Icons.timer, size: 14, color: Colors.grey[600]),
+                        SizedBox(width: 4),
+                        Text(
+                          _formatTime(result.timeSpent),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      _formatDate(result.completedAt),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey[500],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Forward arrow
+              Icon(
+                Icons.chevron_right,
+                color: Colors.grey[400],
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildStatChip(
-      IconData icon, String value, String label, Color color) {
-    return Container(
-      padding: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, size: 20, color: color),
-          SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              color: Colors.grey[600],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatDuration(int seconds) {
-    int minutes = seconds ~/ 60;
-    int remainingSeconds = seconds % 60;
-    if (minutes > 0) {
-      return '$minutes min ${remainingSeconds}s';
+  Color _getGradeColor(String grade) {
+    switch (grade) {
+      case 'A':
+        return Colors.green;
+      case 'B':
+        return Colors.blue;
+      case 'C':
+        return Colors.orange;
+      case 'D':
+        return Colors.amber[700]!;
+      default:
+        return Colors.red;
     }
-    return '${remainingSeconds}s';
   }
 
-  void _showResultDetails(BuildContext context, AssessmentResult result) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.7,
-        minChildSize: 0.5,
-        maxChildSize: 0.95,
-        expand: false,
-        builder: (context, scrollController) => Column(
-          children: [
-            Container(
-              margin: EdgeInsets.only(top: 8),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Text(
-                'Answer Review',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            Divider(height: 1),
-            Expanded(
-              child: ListView.builder(
-                controller: scrollController,
-                padding: EdgeInsets.all(16),
-                itemCount: result.userAnswers.length,
-                itemBuilder: (context, index) {
-                  UserAnswer answer = result.userAnswers[index];
-                  return Card(
-                    margin: EdgeInsets.only(bottom: 16),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: answer.isCorrect
-                                      ? Colors.green.withOpacity(0.1)
-                                      : Colors.red.withOpacity(0.1),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  answer.isCorrect
-                                      ? Icons.check
-                                      : Icons.close,
-                                  color: answer.isCorrect
-                                      ? Colors.green
-                                      : Colors.red,
-                                  size: 20,
-                                ),
-                              ),
-                              SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  'Question ${index + 1}',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                              Text(
-                                answer.selectedAnswerIndex != null
-                                    ? String.fromCharCode(
-                                    65 + answer.selectedAnswerIndex!)
-                                    : 'Skipped',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: answer.isCorrect
-                                      ? Colors.green
-                                      : answer.selectedAnswerIndex != null
-                                      ? Colors.red
-                                      : Colors.orange,
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            answer.questionText,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[700],
-                            ),
-                          ),
-                          if (!answer.isCorrect)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8.0),
-                              child: Text(
-                                'Correct Answer: ${String.fromCharCode(65 + answer.correctAnswerIndex)}',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.green,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  Color _getTypeColor(String type) {
+    switch (type) {
+      case 'quiz':
+        return Colors.blue[100]!;
+      case 'coding':
+        return Colors.green[100]!;
+      case 'exam':
+        return Colors.orange[100]!;
+      default:
+        return Colors.grey[100]!;
+    }
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inDays == 0) {
+      return 'Today';
+    } else if (difference.inDays == 1) {
+      return 'Yesterday';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} days ago';
+    } else {
+      return '${date.day}/${date.month}/${date.year}';
+    }
+  }
+
+  String _formatTime(int seconds) {
+    if (seconds < 60) {
+      return '${seconds}s';
+    } else {
+      final minutes = seconds ~/ 60;
+      final remainingSeconds = seconds % 60;
+      if (remainingSeconds > 0) {
+        return '${minutes}m ${remainingSeconds}s';
+      } else {
+        return '${minutes}m';
+      }
+    }
   }
 }

@@ -1,160 +1,170 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:individual_learner_app/src/models/assesment_model.dart';
-import 'package:individual_learner_app/src/services/assesment_service.dart';
-import 'package:individual_learner_app/src/components/assesment_card.dart';
 import 'package:individual_learner_app/src/screens/take_assesment_screen.dart';
+import '../services/assesment_service.dart';
 
-class AssessmentListTab extends StatelessWidget {
-  final AssessmentType type;
+class AssessmentListTab extends StatefulWidget {
+  final String type;
+
+  const AssessmentListTab({Key? key, required this.type}) : super(key: key);
+
+  @override
+  _AssessmentListTabState createState() => _AssessmentListTabState();
+}
+
+class _AssessmentListTabState extends State<AssessmentListTab> {
   final AssessmentService _assessmentService = AssessmentService();
-
-  AssessmentListTab({Key? key, required this.type}) : super(key: key);
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<Assessment>>(
-      stream: _assessmentService.getAssessmentsByType(type),
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: _assessmentService.getAssessmentsByType(widget.type),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(
-            child: CircularProgressIndicator(),
-          );
+          return Center(child: CircularProgressIndicator());
         }
 
         if (snapshot.hasError) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
-                SizedBox(height: 16),
-                Text(
-                  'Error loading assessments',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-          );
+          return Center(child: Text('Error: ${snapshot.error}'));
         }
 
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+        final assessments = snapshot.data ?? [];
+
+        if (assessments.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.assignment_outlined,
-                  size: 80,
-                  color: Colors.grey[400],
-                ),
+                Icon(Icons.quiz, size: 64, color: Colors.grey),
                 SizedBox(height: 16),
                 Text(
-                  'No ${_getTypeName()} available',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey[700],
-                  ),
+                  'No ${widget.type.replaceAll('_', ' ')} available',
+                  style: TextStyle(color: Colors.grey),
                 ),
                 SizedBox(height: 8),
-                Text(
-                  'Check back later for new ${_getTypeName().toLowerCase()}',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[500],
-                  ),
+                ElevatedButton(
+                  onPressed: () {
+                    _assessmentService.initializeMockData();
+                  },
+                  child: Text('Load Mock Data'),
                 ),
               ],
             ),
           );
         }
-
-        List<Assessment> assessments = snapshot.data!;
 
         return ListView.builder(
           padding: EdgeInsets.all(16),
           itemCount: assessments.length,
           itemBuilder: (context, index) {
-            Assessment assessment = assessments[index];
-            return AssessmentCard(
-              assessment: assessment,
-              onTap: () => _startAssessment(context, assessment),
-            );
+            final assessment = assessments[index];
+            return _buildAssessmentCard(context, assessment);
           },
         );
       },
     );
   }
 
-  String _getTypeName() {
-    switch (type) {
-      case AssessmentType.quiz:
-        return 'Quizzes';
-      case AssessmentType.challenge:
-        return 'Coding Challenges';
-      case AssessmentType.mockExam:
-        return 'Mock Exams';
-    }
-  }
-
-  Future<void> _startAssessment(
-      BuildContext context, Assessment assessment) async {
-    String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
-
-    if (userId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Please login to take assessments'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    // Check if user has already attempted
-    bool hasAttempted = await _assessmentService.hasUserAttempted(
-      userId,
-      assessment.id,
-    );
-
-    if (hasAttempted) {
-      // Show dialog asking if they want to retake
-      bool? retake = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text('Retake Assessment?'),
-          content: Text(
-            'You have already attempted this ${assessment.getTypeString()}. Do you want to retake it?',
+  Widget _buildAssessmentCard(BuildContext context, Map<String, dynamic> assessment) {
+    return Card(
+      margin: EdgeInsets.only(bottom: 16),
+      child: ListTile(
+        contentPadding: EdgeInsets.all(16),
+        leading: Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            color: _getTypeColor(assessment['type']),
+            borderRadius: BorderRadius.circular(10),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue[700],
-              ),
-              child: Text('Retake'),
+          child: Icon(
+            _getTypeIcon(assessment['type']),
+            color: Colors.white,
+          ),
+        ),
+        title: Text(
+          assessment['name'] ?? 'Untitled Quiz',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(height: 4),
+            Text(assessment['description'] ?? ''),
+            SizedBox(height: 8),
+            Row(
+              children: [
+                Chip(
+                  label: Text(assessment['difficulty'] ?? 'Unknown'),
+                  backgroundColor: _getDifficultyColor(assessment['difficulty']),
+                ),
+                SizedBox(width: 8),
+                Chip(
+                  label: Text('${assessment['totalPoints'] ?? 0} pts'),
+                ),
+              ],
             ),
           ],
         ),
-      );
-
-      if (retake != true) return;
-    }
-
-    // Navigate to assessment screen
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => TakeAssessmentScreen(assessment: assessment),
+        trailing: Icon(Icons.arrow_forward_ios, size: 16),
+        onTap: () {
+          // Navigate to quiz taking screen
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => TakeAssessmentScreen(
+                quizId: assessment['id'],
+                quizName: assessment['name'],
+                quizType: assessment['type'],
+              ),
+            ),
+          );
+        },
       ),
     );
+  }
+
+  Color _getTypeColor(String type) {
+    switch (type) {
+      case 'quiz':
+        return Colors.blue;
+      case 'coding':
+        return Colors.green;
+      case 'exam':
+        return Colors.orange;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData _getTypeIcon(String type) {
+    switch (type) {
+      case 'quiz':
+        return Icons.quiz;
+      case 'coding':
+        return Icons.code;
+      case 'exam':
+        return Icons.assignment;
+      default:
+        return Icons.question_mark;
+    }
+  }
+
+  Color _getDifficultyColor(String difficulty) {
+    switch (difficulty?.toLowerCase()) {
+      case 'beginner':
+        return Colors.green.withOpacity(0.2);
+      case 'intermediate':
+        return Colors.blue.withOpacity(0.2);
+      case 'advanced':
+        return Colors.orange.withOpacity(0.2);
+      default:
+        return Colors.grey.withOpacity(0.2);
+    }
   }
 }
