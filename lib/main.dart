@@ -7,6 +7,7 @@ import 'package:individual_learner_app/src/providers/achievement_provider.dart';
 import 'package:individual_learner_app/src/providers/exam_provider.dart';
 import 'package:individual_learner_app/src/screens/home_screen.dart';
 import 'package:individual_learner_app/src/screens/login_screen.dart';
+import 'package:individual_learner_app/src/screens/main_screen.dart'; // ADD THIS IMPORT
 import 'package:individual_learner_app/src/providers/course_provider.dart';
 import 'package:individual_learner_app/src/providers/updates_provider.dart';
 import 'package:individual_learner_app/src/services/session_service.dart';
@@ -132,9 +133,20 @@ class MyApp extends StatelessWidget {
               ),
             ),
           ),
+          bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+            backgroundColor: Colors.white,
+            selectedItemColor: Color(0xFF4361EE),
+            unselectedItemColor: Color(0xFF6C757D),
+            selectedLabelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+            unselectedLabelStyle: TextStyle(fontSize: 12),
+            elevation: 8,
+            type: BottomNavigationBarType.fixed,
+            showSelectedLabels: true,
+            showUnselectedLabels: true,
+          ),
           useMaterial3: false,
         ),
-        // Changed from const HomeScreen() to AuthWrapper
+        // Changed from const HomeScreen() to MainScreen()
         home: const AuthWrapper(),
         debugShowCheckedModeBanner: false,
       ),
@@ -142,7 +154,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
-// NEW: Authentication Wrapper Widget
+// Authentication Wrapper Widget - UPDATED
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 
@@ -153,13 +165,29 @@ class AuthWrapper extends StatelessWidget {
     // Show loading screen while checking auth state
     if (authProvider.isLoading) {
       return const Scaffold(
+        backgroundColor: Color(0xFFF8F9FA),
         body: Center(
-          child: CircularProgressIndicator(),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4361EE)),
+              ),
+              SizedBox(height: 20),
+              Text(
+                'Loading your learning journey...',
+                style: TextStyle(
+                  color: Color(0xFF6C757D),
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
 
     // Redirect based on auth state
-    return authProvider.user != null ? const HomeScreen() : const LoginScreen();
+    return authProvider.user != null ? const MainScreen() : const LoginScreen();
   }
 }

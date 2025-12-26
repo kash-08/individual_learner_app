@@ -16,7 +16,7 @@ class ExamQuestionWidget extends StatefulWidget {
     required this.totalQuestions,
     this.selectedIndex,
     required this.onAnswerSelected,
-    this.showCodeSnippet = true, required bool showPoints,
+    this.showCodeSnippet = true, required bool showPoints, required String difficulty,
   }) : super(key: key);
 
   @override

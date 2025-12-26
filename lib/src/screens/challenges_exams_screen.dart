@@ -2,7 +2,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/assesment_service.dart';
-import 'package:individual_learner_app/src/screens/take_assesment_screen.dart'; // Add this import
+import '../providers/exam_provider.dart';
+import 'take_assesment_screen.dart';
+import 'result_details_screen.dart';
+import 'progress_updates_screen.dart';
 
 class ChallengesExamsScreen extends StatefulWidget {
   const ChallengesExamsScreen({Key? key}) : super(key: key);
@@ -29,6 +32,10 @@ class _ChallengesExamsScreenState extends State<ChallengesExamsScreen> {
       // Get all quizzes
       final allQuizzes = await _assessmentService.getAvailableQuizzes();
 
+      // Get completed assessments from provider
+      final examProvider = Provider.of<ExamProvider>(context, listen: false);
+      await examProvider.loadUserResults(); // Ensure results are loaded
+
       // Separate by type
       setState(() {
         _quizzes = allQuizzes.where((q) => q['type'] == 'quiz').toList();
@@ -45,6 +52,9 @@ class _ChallengesExamsScreenState extends State<ChallengesExamsScreen> {
   }
 
   Widget _buildAssessmentCard(Map<String, dynamic> assessment, Color color) {
+    final examProvider = Provider.of<ExamProvider>(context, listen: false);
+    final isCompleted = examProvider.isQuizCompleted(assessment['id'] ?? '');
+
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(
@@ -52,8 +62,13 @@ class _ChallengesExamsScreenState extends State<ChallengesExamsScreen> {
       ),
       child: InkWell(
         onTap: () {
-          // Navigate to assessment details or take assessment
-          _showAssessmentDetails(assessment);
+          if (isCompleted) {
+            // Navigate to results if completed
+            _viewResults(assessment);
+          } else {
+            // Show details if not completed
+            _showAssessmentDetails(assessment);
+          }
         },
         borderRadius: BorderRadius.circular(12),
         child: Padding(
@@ -66,14 +81,14 @@ class _ChallengesExamsScreenState extends State<ChallengesExamsScreen> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.1),
+                      color: isCompleted ? Colors.green.withOpacity(0.1) : color.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
                       assessment['type'] == 'quiz' ? Icons.quiz_outlined :
                       assessment['type'] == 'coding' ? Icons.code_outlined :
                       Icons.assignment_outlined,
-                      color: color,
+                      color: isCompleted ? Colors.green : color,
                       size: 24,
                     ),
                   ),
@@ -84,9 +99,10 @@ class _ChallengesExamsScreenState extends State<ChallengesExamsScreen> {
                       children: [
                         Text(
                           assessment['name'] ?? 'Assessment',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
+                            color: isCompleted ? Colors.green : Colors.black,
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -96,7 +112,7 @@ class _ChallengesExamsScreenState extends State<ChallengesExamsScreen> {
                           assessment['description'] ?? 'Test your knowledge',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey.shade600,
+                            color: isCompleted ? Colors.green.shade600 : Colors.grey.shade600,
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -104,6 +120,28 @@ class _ChallengesExamsScreenState extends State<ChallengesExamsScreen> {
                       ],
                     ),
                   ),
+                  if (isCompleted)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.check_circle, size: 12, color: Colors.green),
+                          SizedBox(width: 4),
+                          Text(
+                            'Completed',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.green,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
               const SizedBox(height: 16),
@@ -115,7 +153,7 @@ class _ChallengesExamsScreenState extends State<ChallengesExamsScreen> {
                     Icons.question_answer_outlined,
                   ),
                   _buildInfoChip(
-                    '${(assessment['totalPoints'] ?? 0)} pts',
+                    '${(assessment['totalPoints'] ?? 100)} pts',
                     Icons.star_border_outlined,
                   ),
                   _buildInfoChip(
@@ -146,23 +184,45 @@ class _ChallengesExamsScreenState extends State<ChallengesExamsScreen> {
                     ),
                   ),
                   const Spacer(),
-                  TextButton(
-                    onPressed: () {
-                      _startAssessment(assessment);
-                    },
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
+                  if (isCompleted)
+                    OutlinedButton(
+                      onPressed: () {
+                        _viewResults(assessment);
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.green),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                      ),
+                      child: const Text(
+                        'View Results',
+                        style: TextStyle(
+                          color: Colors.green,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    )
+                  else
+                    ElevatedButton(
+                      onPressed: () {
+                        _startAssessment(assessment);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: color,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                      ),
+                      child: const Text(
+                        'Start',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                    child: const Text(
-                      'Start',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ],
@@ -216,6 +276,9 @@ class _ChallengesExamsScreenState extends State<ChallengesExamsScreen> {
   }
 
   void _showAssessmentDetails(Map<String, dynamic> assessment) {
+    final examProvider = Provider.of<ExamProvider>(context, listen: false);
+    final isCompleted = examProvider.isQuizCompleted(assessment['id'] ?? '');
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -224,6 +287,28 @@ class _ChallengesExamsScreenState extends State<ChallengesExamsScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (isCompleted)
+              Container(
+                padding: const EdgeInsets.all(8),
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.check_circle, size: 16, color: Colors.green),
+                    SizedBox(width: 8),
+                    Text(
+                      'You have completed this assessment',
+                      style: TextStyle(
+                        color: Colors.green,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             Text(
               assessment['description'] ?? 'Test your knowledge and skills',
               style: TextStyle(color: Colors.grey.shade600),
@@ -232,7 +317,7 @@ class _ChallengesExamsScreenState extends State<ChallengesExamsScreen> {
             _buildDetailRow('Type', assessment['type'] ?? 'quiz'),
             _buildDetailRow('Difficulty', assessment['difficulty'] ?? 'Beginner'),
             _buildDetailRow('Questions', '${assessment['questionIds']?.length ?? assessment['totalQuestions'] ?? 0}'),
-            _buildDetailRow('Total Points', '${assessment['totalPoints'] ?? 0}'),
+            _buildDetailRow('Total Points', '${assessment['totalPoints'] ?? 100}'),
             _buildDetailRow('Time Limit', _formatTime(assessment['timeLimit'] ?? 0)),
           ],
         ),
@@ -241,13 +326,31 @@ class _ChallengesExamsScreenState extends State<ChallengesExamsScreen> {
             onPressed: () => Navigator.pop(context),
             child: const Text('Close'),
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _startAssessment(assessment);
-            },
-            child: const Text('Start Assessment'),
-          ),
+          if (!isCompleted)
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _startAssessment(assessment);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _getSectionColor(assessment['type'] ?? 'quiz'),
+              ),
+              child: const Text('Start Assessment'),
+            )
+          else
+            OutlinedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _viewResults(assessment);
+              },
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Colors.green),
+              ),
+              child: const Text(
+                'View Results',
+                style: TextStyle(color: Colors.green),
+              ),
+            ),
         ],
       ),
     );
@@ -268,18 +371,27 @@ class _ChallengesExamsScreenState extends State<ChallengesExamsScreen> {
     );
   }
 
-  // FIXED: This function now properly navigates to TakeAssessmentScreen
-  void _startAssessment(Map<String, dynamic> assessment) {
-    print('Starting assessment: ${assessment['name']}');
-    print('Assessment ID: ${assessment['id']}');
+  Color _getSectionColor(String type) {
+    switch (type) {
+      case 'quiz':
+        return Colors.blue;
+      case 'coding':
+        return Colors.green;
+      case 'exam':
+        return Colors.purple;
+      default:
+        return Colors.blue;
+    }
+  }
 
-    // Get the assessment ID - try different possible keys
+  void _startAssessment(Map<String, dynamic> assessment) {
+    // Get the assessment ID
     final assessmentId = assessment['id'] ??
         assessment['quizId'] ??
         assessment['assessmentId'] ??
         'demo_${DateTime.now().millisecondsSinceEpoch}';
 
-    // Navigate directly using MaterialPageRoute
+    // Navigate to TakeAssessmentScreen
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -287,6 +399,7 @@ class _ChallengesExamsScreenState extends State<ChallengesExamsScreen> {
           quizId: assessmentId,
           quizName: assessment['name'] ?? 'Assessment',
           quizType: assessment['type'] ?? 'quiz',
+          difficulty: assessment['difficulty'] ?? 'Beginner',
           totalDuration: assessment['timeLimit'] != null
               ? (assessment['timeLimit'] ~/ 60) // Convert seconds to minutes
               : null,
@@ -295,222 +408,313 @@ class _ChallengesExamsScreenState extends State<ChallengesExamsScreen> {
           totalPoints: assessment['totalPoints'] ?? 100,
         ),
       ),
+    ).then((_) {
+      // Reload data when returning from assessment (user might have completed it)
+      _loadData();
+    });
+  }
+
+  void _viewResults(Map<String, dynamic> assessment) {
+    final examProvider = Provider.of<ExamProvider>(context, listen: false);
+    final result = examProvider.getResultByQuizId(assessment['id'] ?? '');
+
+    if (result != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ResultDetailsScreen(result: result), // FIXED: Pass QuizResult object
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No results found for this assessment'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    }
+  }
+
+  void _viewProgressHistory() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ProgressUpdatesScreen(),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final examProvider = Provider.of<ExamProvider>(context);
+    final completedCount = examProvider.getCompletedCount();
+    final averageScore = examProvider.getAverageScore();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Challenges & Exams'),
         centerTitle: true,
-        elevation: 0,
+        elevation: 2,
+        backgroundColor: const Color(0xFFEA580C),
+        foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history),
+            onPressed: _viewProgressHistory,
+            tooltip: 'View Progress History',
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadData,
+            tooltip: 'Refresh',
+          ),
+        ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFEA580C)),
+        ),
+      )
           : SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Quick Stats
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFEA580C), Color(0xFFF97316)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildStatItem(_quizzes.length + _challenges.length + _exams.length, 'Total'),
+                  _buildStatItem(completedCount, 'Completed'),
+                  _buildStatItem(
+                    averageScore.toInt(),
+                    'Avg %',
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
             // Quizzes Section
             if (_quizzes.isNotEmpty) ...[
-              const Text(
+              _buildSectionHeader(
                 'Quizzes',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
                 'Quick tests to check your knowledge',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
-                ),
+                Colors.blue,
               ),
-              const SizedBox(height: 16),
               ListView.separated(
                 physics: const NeverScrollableScrollPhysics(),
                 shrinkWrap: true,
                 itemCount: _quizzes.length,
-                separatorBuilder: (context, index) =>
-                const SizedBox(height: 12),
-                itemBuilder: (context, index) =>
-                    _buildAssessmentCard(_quizzes[index], Colors.blue),
+                separatorBuilder: (context, index) => const SizedBox(height: 12),
+                itemBuilder: (context, index) => _buildAssessmentCard(_quizzes[index], Colors.blue),
               ),
               const SizedBox(height: 24),
             ],
 
             // Coding Challenges Section
             if (_challenges.isNotEmpty) ...[
-              const Text(
+              _buildSectionHeader(
                 'Coding Challenges',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
                 'Solve real coding problems',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
-                ),
+                Colors.green,
               ),
-              const SizedBox(height: 16),
               ListView.separated(
                 physics: const NeverScrollableScrollPhysics(),
                 shrinkWrap: true,
                 itemCount: _challenges.length,
-                separatorBuilder: (context, index) =>
-                const SizedBox(height: 12),
-                itemBuilder: (context, index) =>
-                    _buildAssessmentCard(_challenges[index], Colors.green),
+                separatorBuilder: (context, index) => const SizedBox(height: 12),
+                itemBuilder: (context, index) => _buildAssessmentCard(_challenges[index], Colors.green),
               ),
               const SizedBox(height: 24),
             ],
 
             // Mock Exams Section
             if (_exams.isNotEmpty) ...[
-              const Text(
+              _buildSectionHeader(
                 'Mock Exams',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
                 'Full-length practice tests',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
-                ),
+                Colors.purple,
               ),
-              const SizedBox(height: 16),
               ListView.separated(
                 physics: const NeverScrollableScrollPhysics(),
                 shrinkWrap: true,
                 itemCount: _exams.length,
-                separatorBuilder: (context, index) =>
-                const SizedBox(height: 12),
-                itemBuilder: (context, index) =>
-                    _buildAssessmentCard(_exams[index], Colors.purple),
+                separatorBuilder: (context, index) => const SizedBox(height: 12),
+                itemBuilder: (context, index) => _buildAssessmentCard(_exams[index], Colors.purple),
               ),
             ],
 
             // Empty State - Show demo quizzes if no data
             if (_quizzes.isEmpty && _challenges.isEmpty && _exams.isEmpty)
-              Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 100),
-                    Icon(
-                      Icons.quiz_outlined,
-                      size: 80,
-                      color: Colors.grey.shade300,
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'No assessments available',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Try demo quizzes below',
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
+              _buildEmptyState(),
 
-                    // Demo quizzes
-                    Card(
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Demo Quizzes',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'Try these demo quizzes to test the feature',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
+            const SizedBox(height: 32),
+          ],
+        ),
+      ),
+    );
+  }
 
-                            // Demo Quiz 1
-                            _buildDemoQuizCard(
-                              'Programming Basics Quiz',
-                              'Test your programming fundamentals knowledge',
-                              3,
-                              100,
-                              10,
-                              'Beginner',
-                              'demo_quiz_1',
-                              Colors.blue,
-                            ),
+  Widget _buildStatItem(int value, String label) {
+    return Column(
+      children: [
+        Text(
+          '$value',
+          style: const TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Colors.white70,
+          ),
+        ),
+      ],
+    );
+  }
 
-                            const SizedBox(height: 12),
+  Widget _buildSectionHeader(String title, String subtitle, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: color,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          subtitle,
+          style: const TextStyle(
+            fontSize: 14,
+            color: Colors.grey,
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
 
-                            // Demo Quiz 2
-                            _buildDemoQuizCard(
-                              'Dart Coding Challenge',
-                              'Practice your Dart programming skills',
-                              2,
-                              150,
-                              15,
-                              'Intermediate',
-                              'demo_quiz_2',
-                              Colors.green,
-                            ),
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const SizedBox(height: 50),
+          Icon(
+            Icons.quiz_outlined,
+            size: 80,
+            color: Colors.grey.shade300,
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'No assessments available',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Try demo quizzes below',
+            style: TextStyle(
+              color: Colors.grey.shade600,
+            ),
+          ),
+          const SizedBox(height: 24),
 
-                            const SizedBox(height: 12),
+          // Demo quizzes
+          _buildDemoSection(),
+        ],
+      ),
+    );
+  }
 
-                            // Demo Quiz 3
-                            _buildDemoQuizCard(
-                              'Flutter Mock Exam',
-                              'Full-length Flutter certification practice test',
-                              4,
-                              200,
-                              60,
-                              'Advanced',
-                              'demo_quiz_3',
-                              Colors.purple,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-                    ElevatedButton(
-                      onPressed: _loadData,
-                      child: const Text('Refresh'),
-                    ),
-                  ],
-                ),
+  Widget _buildDemoSection() {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Demo Quizzes',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
               ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Try these demo quizzes to test the feature',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Demo Quizzes List
+            _buildDemoQuizCard(
+              'Programming Basics Quiz',
+              'Test your programming fundamentals knowledge',
+              3,
+              100,
+              10,
+              'Beginner',
+              'demo_quiz_1',
+              Colors.blue,
+            ),
+
+            const SizedBox(height: 12),
+
+            _buildDemoQuizCard(
+              'Dart Coding Challenge',
+              'Practice your Dart programming skills',
+              2,
+              150,
+              15,
+              'Intermediate',
+              'demo_quiz_2',
+              Colors.green,
+            ),
+
+            const SizedBox(height: 12),
+
+            _buildDemoQuizCard(
+              'Flutter Mock Exam',
+              'Full-length Flutter certification practice test',
+              4,
+              200,
+              60,
+              'Advanced',
+              'demo_quiz_3',
+              Colors.purple,
+            ),
           ],
         ),
       ),
@@ -540,9 +744,10 @@ class _ChallengesExamsScreenState extends State<ChallengesExamsScreen> {
           children: [
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
+                color: color,
               ),
             ),
             const SizedBox(height: 4),

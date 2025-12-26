@@ -10,6 +10,7 @@ class TakeAssessmentScreen extends StatefulWidget {
   final String quizId;
   final String quizName;
   final String quizType;
+  final String difficulty; // ADDED: Difficulty parameter
   final int? totalDuration; // Duration in minutes (optional)
   final int? totalQuestions; // Total questions (optional)
   final int? totalPoints; // Total points (optional)
@@ -19,6 +20,7 @@ class TakeAssessmentScreen extends StatefulWidget {
     required this.quizId,
     required this.quizName,
     required this.quizType,
+    this.difficulty = 'Beginner', // ADDED: Default value
     this.totalDuration,
     this.totalQuestions,
     this.totalPoints,
@@ -319,13 +321,48 @@ class _TakeAssessmentScreenState extends State<TakeAssessmentScreen> {
           widget.quizName,
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
-        if (widget.quizType.isNotEmpty)
-          Text(
-            widget.quizType,
-            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-          ),
+        SizedBox(height: 2),
+        Row(
+          children: [
+            Text(
+              '${widget.quizType} • ',
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            ),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: _getDifficultyColor(widget.difficulty).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(
+                  color: _getDifficultyColor(widget.difficulty).withOpacity(0.3),
+                ),
+              ),
+              child: Text(
+                widget.difficulty,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: _getDifficultyColor(widget.difficulty),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
       ],
     );
+  }
+
+  Color _getDifficultyColor(String difficulty) {
+    switch (difficulty.toLowerCase()) {
+      case 'beginner':
+        return Colors.green;
+      case 'intermediate':
+        return Colors.orange;
+      case 'advanced':
+        return Colors.red;
+      default:
+        return Colors.blue;
+    }
   }
 
   void _showSubmitConfirmation() {
@@ -360,6 +397,27 @@ class _TakeAssessmentScreenState extends State<TakeAssessmentScreen> {
                 ],
               ),
             ],
+            SizedBox(height: 8),
+            Row(
+              children: [
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: _getDifficultyColor(widget.difficulty),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                SizedBox(width: 6),
+                Text(
+                  'Difficulty: ${widget.difficulty}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    color: _getDifficultyColor(widget.difficulty),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
         actions: [
@@ -437,6 +495,22 @@ class _TakeAssessmentScreenState extends State<TakeAssessmentScreen> {
                   ),
                 ),
               ),
+            SizedBox(height: 4),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: _getDifficultyColor(widget.difficulty).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'Difficulty: ${widget.difficulty}',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: _getDifficultyColor(widget.difficulty),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
           ],
         ),
       )
@@ -514,6 +588,7 @@ class _TakeAssessmentScreenState extends State<TakeAssessmentScreen> {
                             _onAnswerSelected(index, selectedIndex);
                           },
                           showPoints: widget.totalPoints != null,
+                          difficulty: widget.difficulty, // Pass difficulty to widget
                         ),
                       );
                     },
@@ -801,9 +876,29 @@ class _TakeAssessmentScreenState extends State<TakeAssessmentScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Total: ${_questions.length} questions',
-                style: TextStyle(color: Colors.grey[600]),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Total: ${_questions.length} questions',
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                  SizedBox(height: 2),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: _getDifficultyColor(widget.difficulty).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      'Difficulty: ${widget.difficulty}',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: _getDifficultyColor(widget.difficulty),
+                      ),
+                    ),
+                  ),
+                ],
               ),
               ElevatedButton(
                 onPressed: () => Navigator.pop(context),

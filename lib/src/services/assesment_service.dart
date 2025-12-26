@@ -313,7 +313,7 @@ class AssessmentService {
     required String quizName,
     required String quizType,
     required List<Map<String, dynamic>> userAnswers,
-    required int timeSpent,
+    required int timeSpent, required int totalQuestions, String? userId, Map<String, dynamic>? details, List<Map<String, dynamic>>? questionResults,
   }) async {
     try {
       await _checkAuthentication();
