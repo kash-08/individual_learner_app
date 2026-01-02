@@ -1,5 +1,5 @@
-// lib/screens/home_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/update_model.dart';
 import '../models/user_model.dart';
@@ -53,7 +53,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadWeeklyUpdates() async {
-    final updatesProvider = Provider.of<UpdatesProvider>(context, listen: false);
+    final updatesProvider = Provider.of<UpdatesProvider>(
+        context, listen: false);
     await updatesProvider.loadUpdates();
   }
 
@@ -87,34 +88,40 @@ class _HomeScreenState extends State<HomeScreen> {
     // Show a dialog for now (replace with actual navigation)
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Resume Course'),
-        content: Text('Would you like to continue from lesson ${lessonIndex + 1}?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+      builder: (context) =>
+          AlertDialog(
+            title: const Text('Resume Course'),
+            content: Text(
+                'Would you like to continue from lesson ${lessonIndex + 1}?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  // TODO: Implement actual course navigation
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Navigating to lesson ${lessonIndex + 1}'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                },
+                child: const Text('Resume'),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // TODO: Implement actual course navigation
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Navigating to lesson ${lessonIndex + 1}'),
-                  backgroundColor: Colors.green,
-                ),
-              );
-            },
-            child: const Text('Resume'),
-          ),
-        ],
-      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent, // Makes top bar transparent
+      systemNavigationBarColor: Colors.white, // Makes bottom bar white
+    ));
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: _buildAppBar(),
@@ -184,11 +191,13 @@ class _HomeScreenState extends State<HomeScreen> {
           final course = resumeProgress['course'] as Course;
           final session = UserSession(
             userId: currentUser.id,
-            lastActivityTime: DateTime.now().subtract(const Duration(minutes: 30)),
+            lastActivityTime: DateTime.now().subtract(
+                const Duration(minutes: 30)),
             lastActivityType: 'course',
             lastActivityId: course.id,
             lastLessonIndex: resumeProgress['lessonIndex'] as int,
-            activityData: resumeProgress['progressData'] as Map<String, dynamic>,
+            activityData: resumeProgress['progressData'] as Map<String,
+                dynamic>,
           );
 
           return Column(
@@ -225,12 +234,18 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Text(
                 'Start Your Learning Journey',
-                style: Theme.of(context).textTheme.headlineSmall,
+                style: Theme
+                    .of(context)
+                    .textTheme
+                    .headlineSmall,
               ),
               const SizedBox(height: 8),
               Text(
                 'Enroll in your first course to begin learning and track your progress',
-                style: Theme.of(context).textTheme.bodyMedium,
+                style: Theme
+                    .of(context)
+                    .textTheme
+                    .bodyMedium,
               ),
               const SizedBox(height: 16),
               SizedBox(
@@ -269,7 +284,10 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Text(
                   'Ready to Learn?',
-                  style: Theme.of(context).textTheme.bodyMedium,
+                  style: Theme
+                      .of(context)
+                      .textTheme
+                      .bodyMedium,
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -282,7 +300,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   child: Text(
                     '${(firstCourse.progress * 100).toInt()}% complete',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    style: Theme
+                        .of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(
                       color: const Color(0xFF4361EE),
                       fontWeight: FontWeight.w600,
                     ),
@@ -293,7 +315,10 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 8),
             Text(
               firstCourse.title,
-              style: Theme.of(context).textTheme.headlineSmall,
+              style: Theme
+                  .of(context)
+                  .textTheme
+                  .headlineSmall,
             ),
             const SizedBox(height: 16),
             Column(
@@ -310,7 +335,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     Container(
                       height: 8,
-                      width: MediaQuery.of(context).size.width * firstCourse.progress,
+                      width: MediaQuery
+                          .of(context)
+                          .size
+                          .width * firstCourse.progress,
                       decoration: BoxDecoration(
                         color: const Color(0xFF4361EE),
                         borderRadius: BorderRadius.circular(4),
@@ -323,12 +351,20 @@ class _HomeScreenState extends State<HomeScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Lesson ${firstCourse.currentLesson} of ${firstCourse.totalLessons}',
-                      style: Theme.of(context).textTheme.bodySmall,
+                      'Lesson ${firstCourse.currentLesson} of ${firstCourse
+                          .totalLessons}',
+                      style: Theme
+                          .of(context)
+                          .textTheme
+                          .bodySmall,
                     ),
                     Text(
-                      '${firstCourse.totalLessons - firstCourse.currentLesson} lessons left',
-                      style: Theme.of(context).textTheme.bodySmall,
+                      '${firstCourse.totalLessons -
+                          firstCourse.currentLesson} lessons left',
+                      style: Theme
+                          .of(context)
+                          .textTheme
+                          .bodySmall,
                     ),
                   ],
                 ),
@@ -359,12 +395,18 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         Text(
           'Welcome back, ${currentUser.name}!',
-          style: Theme.of(context).textTheme.headlineLarge,
+          style: Theme
+              .of(context)
+              .textTheme
+              .headlineLarge,
         ),
         const SizedBox(height: 8),
         Text(
           'Ready to continue your learning journey?',
-          style: Theme.of(context).textTheme.bodyMedium,
+          style: Theme
+              .of(context)
+              .textTheme
+              .bodyMedium,
         ),
       ],
     );
@@ -423,7 +465,10 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         Text(
           'AI Learning Tools',
-          style: Theme.of(context).textTheme.headlineSmall,
+          style: Theme
+              .of(context)
+              .textTheme
+              .headlineSmall,
         ),
         const SizedBox(height: 12),
         _buildAIToolCard(
@@ -527,7 +572,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Text(
                       title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      style: Theme
+                          .of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(
                         fontWeight: FontWeight.w700,
                         color: Colors.black87,
                       ),
@@ -535,7 +584,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 4),
                     Text(
                       description,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      style: Theme
+                          .of(context)
+                          .textTheme
+                          .bodyMedium
+                          ?.copyWith(
                         color: Colors.black54,
                       ),
                     ),
@@ -574,7 +627,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Text(
                       'Your Learning',
-                      style: Theme.of(context).textTheme.headlineSmall,
+                      style: Theme
+                          .of(context)
+                          .textTheme
+                          .headlineSmall,
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -586,8 +642,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
-                        '$enrolledCoursesCount ${enrolledCoursesCount == 1 ? 'Course' : 'Courses'}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        '$enrolledCoursesCount ${enrolledCoursesCount == 1
+                            ? 'Course'
+                            : 'Courses'}',
+                        style: Theme
+                            .of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(
                           color: const Color(0xFF4361EE),
                           fontWeight: FontWeight.w600,
                         ),
@@ -600,7 +662,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   enrolledCoursesCount == 0
                       ? 'Start your learning journey by exploring our course catalog'
                       : 'Continue exploring new topics and expand your knowledge',
-                  style: Theme.of(context).textTheme.bodyMedium,
+                  style: Theme
+                      .of(context)
+                      .textTheme
+                      .bodyMedium,
                 ),
                 const SizedBox(height: 20),
                 SizedBox(
@@ -674,64 +739,71 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.8,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
+      builder: (context) =>
+          Container(
+            height: MediaQuery
+                .of(context)
+                .size
+                .height * 0.8,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+              ),
+            ),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'My Courses',
+                        style: Theme
+                            .of(context)
+                            .textTheme
+                            .headlineSmall,
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: enrolledCourses.isEmpty
+                      ? _buildEmptyCoursesState()
+                      : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: enrolledCourses.length,
+                    itemBuilder: (context, index) {
+                      final course = enrolledCourses[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: CourseProgressCard(
+                          course: course,
+                          onTap: () {
+                            courseProvider.updateCourseProgressWithSession(
+                              course.id,
+                              course.currentLesson,
+                            );
+                            _showCourseDetails(context, course);
+                            Navigator.pop(context);
+                          },
+                          onUnenroll: () {
+                            _showUnenrollDialog(context, course);
+                          },
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'My Courses',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: enrolledCourses.isEmpty
-                  ? _buildEmptyCoursesState()
-                  : ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: enrolledCourses.length,
-                itemBuilder: (context, index) {
-                  final course = enrolledCourses[index];
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: CourseProgressCard(
-                      course: course,
-                      onTap: () {
-                        courseProvider.updateCourseProgressWithSession(
-                          course.id,
-                          course.currentLesson,
-                        );
-                        _showCourseDetails(context, course);
-                        Navigator.pop(context);
-                      },
-                      onUnenroll: () {
-                        _showUnenrollDialog(context, course);
-                      },
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -791,112 +863,116 @@ class _HomeScreenState extends State<HomeScreen> {
   void _showCourseDetails(BuildContext context, Course course) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(course.title),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Instructor: ${course.instructor}'),
-            Text('Category: ${course.category}'),
-            Text('Difficulty: ${course.difficulty}'),
-            Text('Progress: ${(course.progress * 100).toInt()}%'),
-            const SizedBox(height: 16),
-            LinearProgressIndicator(
-              value: course.progress,
-              backgroundColor: const Color(0xFFE9ECEF),
-              color: const Color(0xFF4361EE),
-            ),
-            Consumer<CourseProvider>(
-              builder: (context, courseProvider, child) {
-                if (courseProvider.hasRecentProgress(course.id)) {
-                  return Column(
-                    children: [
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.green[50],
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.history, color: Colors.green[700], size: 16),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Recent progress available',
-                              style: TextStyle(
-                                color: Colors.green[700],
-                                fontWeight: FontWeight.w500,
-                              ),
+      builder: (context) =>
+          AlertDialog(
+            title: Text(course.title),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Instructor: ${course.instructor}'),
+                Text('Category: ${course.category}'),
+                Text('Difficulty: ${course.difficulty}'),
+                Text('Progress: ${(course.progress * 100).toInt()}%'),
+                const SizedBox(height: 16),
+                LinearProgressIndicator(
+                  value: course.progress,
+                  backgroundColor: const Color(0xFFE9ECEF),
+                  color: const Color(0xFF4361EE),
+                ),
+                Consumer<CourseProvider>(
+                  builder: (context, courseProvider, child) {
+                    if (courseProvider.hasRecentProgress(course.id)) {
+                      return Column(
+                        children: [
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.green[50],
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  );
-                }
-                return const SizedBox.shrink();
-              },
+                            child: Row(
+                              children: [
+                                Icon(Icons.history, color: Colors.green[700],
+                                    size: 16),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Recent progress available',
+                                  style: TextStyle(
+                                    color: Colors.green[700],
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
+              ],
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: const Text('Continue'),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            child: const Text('Continue'),
-          ),
-        ],
-      ),
     );
   }
 
   void _showUnenrollDialog(BuildContext context, Course course) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Unenroll from Course'),
-        content: Text('Are you sure you want to unenroll from "${course.title}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              try {
-                await Provider.of<CourseProvider>(context, listen: false)
-                    .unenrollFromCourse(course.id);
+      builder: (context) =>
+          AlertDialog(
+            title: const Text('Unenroll from Course'),
+            content: Text(
+                'Are you sure you want to unenroll from "${course.title}"?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  try {
+                    await Provider.of<CourseProvider>(context, listen: false)
+                        .unenrollFromCourse(course.id);
 
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Successfully unenrolled from course'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Failed to unenroll: $e'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
-            child: const Text('Unenroll'),
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Successfully unenrolled from course'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Failed to unenroll: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                ),
+                child: const Text('Unenroll'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
@@ -906,7 +982,10 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         Text(
           'Quick Actions',
-          style: Theme.of(context).textTheme.headlineSmall,
+          style: Theme
+              .of(context)
+              .textTheme
+              .headlineSmall,
         ),
         const SizedBox(height: 12),
         Row(
