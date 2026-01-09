@@ -7,6 +7,7 @@ import '../models/course_model.dart';
 import '../models/session_model.dart';
 import '../providers/course_provider.dart';
 import '../providers/updates_provider.dart';
+import '../providers/timetable_provider.dart'; // ADDED
 import '../components/course_progress_card.dart';
 import '../components/resume_activity_card.dart';
 import '../components/update_card.dart';
@@ -16,6 +17,7 @@ import 'achievements_screen.dart';
 import 'challenges_exams_screen.dart';
 import 'ai_assistant_screen.dart';
 import 'analytics_screen.dart';
+import 'smart_timetable_screen.dart'; // ADDED
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -45,6 +47,8 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadCourses();
     // Load weekly updates
     _loadWeeklyUpdates();
+    // Load timetable data
+    _loadTimetableData(); // ADDED
   }
 
   Future<void> _loadCourses() async {
@@ -56,6 +60,12 @@ class _HomeScreenState extends State<HomeScreen> {
     final updatesProvider = Provider.of<UpdatesProvider>(
         context, listen: false);
     await updatesProvider.loadUpdates();
+  }
+
+  // ADDED: Load timetable data
+  Future<void> _loadTimetableData() async {
+    final timetableProvider = Provider.of<TimetableProvider>(context, listen: false);
+    await timetableProvider.loadTimetableSlots();
   }
 
   // Resume activity methods
@@ -139,6 +149,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
               _buildStatsSection(),
               const SizedBox(height: 24),
+
+              // ADDED: Today's Study Schedule Section
+              _buildTodaysScheduleSection(),
+              const SizedBox(height: 24),
+
               _buildAIToolsSection(),
               const SizedBox(height: 24),
               _buildBrowseCoursesSection(),
@@ -458,7 +473,353 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // UPDATED: AI Tools Section with enhanced navigation
+  // ADDED: Today's Study Schedule Section
+  Widget _buildTodaysScheduleSection() {
+    return Consumer<TimetableProvider>(
+      builder: (context, timetableProvider, child) {
+        final todaySlots = timetableProvider.getTodaySlots();
+        final upcomingSlots = timetableProvider.getUpcomingSlots().take(2).toList();
+        final stats = timetableProvider.getStats();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Today\'s Study Schedule',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                if (todaySlots.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF4361EE).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      '${todaySlots.where((slot) => slot.isCompleted).length}/${todaySlots.length} completed',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: const Color(0xFF4361EE),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            if (todaySlots.isEmpty)
+              Card(
+                elevation: 3,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.schedule,
+                            color: Colors.blue[400],
+                            size: 24,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'No study slots scheduled for today',
+                                  style: Theme.of(context).textTheme.titleMedium,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Plan your study sessions for better results',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const SmartTimetableScreen(),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF4361EE),
+                            foregroundColor: Colors.white,
+                          ),
+                          child: const Text('Plan Now'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              Column(
+                children: [
+                  ...todaySlots.map((slot) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Card(
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ListTile(
+                          leading: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Color(int.parse(slot.colorHex.substring(1, 7),
+                                  radix: 16) + 0xFF000000).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              slot.isCompleted ? Icons.check_circle : Icons.schedule,
+                              color: Color(int.parse(slot.colorHex.substring(1, 7),
+                                  radix: 16) + 0xFF000000),
+                            ),
+                          ),
+                          title: Text(
+                            slot.title,
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              decoration: slot.isCompleted
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                            ),
+                          ),
+                          subtitle: Text(
+                            '${slot.startTime.format(context)} - ${slot.endTime.format(context)}',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: Icon(
+                                  slot.isCompleted
+                                      ? Icons.radio_button_checked
+                                      : Icons.radio_button_unchecked,
+                                  color: slot.isCompleted
+                                      ? Colors.green
+                                      : Colors.grey,
+                                ),
+                                onPressed: () {
+                                  timetableProvider.toggleSlotCompletion(
+                                      slot.id,
+                                      !slot.isCompleted
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                          onTap: () {
+                            // Navigate to timetable screen with focus on this slot
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const SmartTimetableScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    );
+                  }).toList(),
+
+                  if (upcomingSlots.isNotEmpty)
+                    Column(
+                      children: [
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Upcoming Sessions',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const SmartTimetableScreen(),
+                                  ),
+                                );
+                              },
+                              child: const Text('View All'),
+                            ),
+                          ],
+                        ),
+                        ...upcomingSlots.map((slot) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: ListTile(
+                              leading: Container(
+                                width: 36,
+                                height: 36,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[100],
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  Icons.schedule,
+                                  color: Colors.grey[600],
+                                  size: 18,
+                                ),
+                              ),
+                              title: Text(
+                                slot.title,
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              subtitle: Text(
+                                '${_formatDate(slot.date)} • ${slot.startTime.format(context)}',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ],
+                    ),
+                ],
+              ),
+
+            const SizedBox(height: 12),
+
+            // Study Statistics
+            Card(
+              elevation: 3,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Study Statistics',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildStudyStatItem(
+                          '${stats.completedSlots}',
+                          'Completed',
+                          Icons.check_circle,
+                          Colors.green,
+                        ),
+                        _buildStudyStatItem(
+                          '${stats.upcomingSlots}',
+                          'Upcoming',
+                          Icons.upcoming,
+                          Colors.blue,
+                        ),
+                        _buildStudyStatItem(
+                          '${stats.totalStudyHours.toStringAsFixed(1)}h',
+                          'Total Time',
+                          Icons.timer,
+                          Colors.orange,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildStudyStatItem(String value, String label, IconData icon, Color color) {
+    return Column(
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: color, size: 20),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Colors.grey,
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = today.add(const Duration(days: 1));
+    final dayAfterTomorrow = today.add(const Duration(days: 2));
+
+    if (date.year == today.year &&
+        date.month == today.month &&
+        date.day == today.day) {
+      return 'Today';
+    } else if (date.year == tomorrow.year &&
+        date.month == tomorrow.month &&
+        date.day == tomorrow.day) {
+      return 'Tomorrow';
+    } else if (date.year == dayAfterTomorrow.year &&
+        date.month == dayAfterTomorrow.month &&
+        date.day == dayAfterTomorrow.day) {
+      return 'Day after';
+    } else {
+      return '${date.day}/${date.month}';
+    }
+  }
+
+  // UPDATED: AI Tools Section with Smart Timetable integration
   Widget _buildAIToolsSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -472,16 +833,15 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         const SizedBox(height: 12),
         _buildAIToolCard(
-          icon: Icons.auto_awesome,
+          icon: Icons.schedule,
           title: 'Smart Timetable',
           description: 'AI-generated personalized study schedule',
           color: Colors.blue,
           onTap: () {
-            // This will be implemented in coming weeks
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Smart Timetable feature coming next week!'),
-                backgroundColor: Colors.blue,
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const SmartTimetableScreen(),
               ),
             );
           },
@@ -493,7 +853,6 @@ class _HomeScreenState extends State<HomeScreen> {
           description: '24/7 AI-powered learning companion',
           color: Colors.purple,
           onTap: () {
-            // Navigate to AI Assistant screen (stub for now)
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -509,7 +868,6 @@ class _HomeScreenState extends State<HomeScreen> {
           description: 'Smart insights & performance analysis',
           color: Colors.green,
           onTap: () {
-            // Navigate to Analytics screen
             Navigator.push(
               context,
               MaterialPageRoute(

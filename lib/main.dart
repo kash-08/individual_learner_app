@@ -11,6 +11,7 @@ import 'package:individual_learner_app/src/screens/login_screen.dart';
 import 'package:individual_learner_app/src/screens/main_screen.dart';
 import 'package:individual_learner_app/src/providers/course_provider.dart';
 import 'package:individual_learner_app/src/providers/updates_provider.dart';
+import 'package:individual_learner_app/src/providers/timetable_provider.dart'; // ADDED
 import 'package:individual_learner_app/src/services/session_service.dart';
 import 'package:individual_learner_app/src/firebase/firebase_options.dart';
 import 'package:individual_learner_app/src/services/firebase_service.dart';
@@ -19,6 +20,9 @@ import 'package:individual_learner_app/src/services/assesment_service.dart';
 // NEW: Import AI Assistant
 import 'package:individual_learner_app/src/providers/ai_assistant_provider.dart';
 import 'package:individual_learner_app/src/screens/ai_assistant_screen.dart';
+
+// ADDED: Import Smart Timetable Screen
+import 'package:individual_learner_app/src/screens/smart_timetable_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -64,6 +68,12 @@ class MyApp extends StatelessWidget {
 
         // Weekly Updates
         ChangeNotifierProvider(create: (_) => UpdatesProvider()),
+
+        // ADDED: Smart Timetable Provider
+        ChangeNotifierProvider(
+          create: (_) => TimetableProvider(),
+          lazy: false, // Initialize immediately to load user's timetable
+        ),
 
         // Achievements
         ChangeNotifierProvider(create: (context) => AchievementProvider()),
@@ -172,9 +182,10 @@ class MyApp extends StatelessWidget {
         home: const AuthWrapper(),
         debugShowCheckedModeBanner: false,
 
-        // NEW: Add AI Assistant screen to routes
+        // ADDED: Updated routes with Smart Timetable
         routes: {
           '/ai-assistant': (context) => const AIAssistantScreen(),
+          '/smart-timetable': (context) => const SmartTimetableScreen(),
         },
       ),
     );
@@ -191,29 +202,37 @@ class AuthWrapper extends StatefulWidget {
 
 class _AuthWrapperState extends State<AuthWrapper> {
   bool _aiInitialized = false;
+  bool _timetableInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    _initializeAI();
+    _initializeProviders();
   }
 
-  Future<void> _initializeAI() async {
+  Future<void> _initializeProviders() async {
     try {
-      // Initialize AI Assistant when user is authenticated
+      // Initialize providers when user is authenticated
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       if (authProvider.user != null) {
+        // Initialize AI Assistant
         final aiProvider = Provider.of<AIAssistantProvider>(context, listen: false);
         await aiProvider.initialize();
+
+        // Initialize Timetable
+        final timetableProvider = Provider.of<TimetableProvider>(context, listen: false);
+        await timetableProvider.loadTimetableSlots();
       }
 
       setState(() {
         _aiInitialized = true;
+        _timetableInitialized = true;
       });
     } catch (e) {
-      print('AI initialization error: $e');
+      print('Provider initialization error: $e');
       setState(() {
-        _aiInitialized = true; // Continue even if AI fails
+        _aiInitialized = true; // Continue even if providers fail
+        _timetableInitialized = true;
       });
     }
   }
@@ -222,8 +241,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
 
-    // Show loading screen while checking auth state or initializing AI
-    if (authProvider.isLoading || !_aiInitialized) {
+    // Show loading screen while checking auth state or initializing providers
+    if (authProvider.isLoading || !_aiInitialized || !_timetableInitialized) {
       return _buildLoadingScreen();
     }
 
@@ -232,7 +251,6 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   Widget _buildLoadingScreen() {
-    // REMOVED SafeArea to fix yellow/black areas
     return Scaffold(
       backgroundColor: const Color(0xFF4361EE), // Full blue background
       body: Container(
@@ -268,10 +286,33 @@ class _AuthWrapperState extends State<AuthWrapper> {
                       color: Colors.white,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
-                      Icons.smart_toy,
-                      color: Color(0xFF4361EE),
-                      size: 40,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        const Icon(
+                          Icons.smart_toy,
+                          color: Color(0xFF4361EE),
+                          size: 40,
+                        ),
+                        // ADDED: Timetable icon overlay
+                        Positioned(
+                          bottom: 2,
+                          right: 2,
+                          child: Container(
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              color: Colors.green,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Icon(
+                              Icons.schedule,
+                              color: Colors.white,
+                              size: 12,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -286,16 +327,43 @@ class _AuthWrapperState extends State<AuthWrapper> {
                 ),
               ),
               const SizedBox(height: 15),
-              const Text(
-                'Initializing AI Assistant...',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 18,
-                ),
+              // UPDATED: Show current initialization step
+              Consumer<AuthProvider>(
+                builder: (context, authProvider, child) {
+                  if (authProvider.isLoading) {
+                    return const Text(
+                      'Checking authentication...',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 18,
+                      ),
+                    );
+                  } else if (!_aiInitialized) {
+                    return const Text(
+                      'Initializing AI Assistant...',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 18,
+                      ),
+                    );
+                  } else if (!_timetableInitialized) {
+                    return const Text(
+                      'Loading your timetable...',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 18,
+                      ),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
               ),
               const SizedBox(height: 30),
               // Loading animation dots
               _buildLoadingDots(),
+              const SizedBox(height: 20),
+              // ADDED: Feature highlights
+              _buildFeatureHighlights(),
             ],
           ),
         ),
@@ -326,6 +394,53 @@ class _AuthWrapperState extends State<AuthWrapper> {
             ? Colors.white
             : Colors.white.withOpacity(0.3),
         shape: BoxShape.circle,
+      ),
+    );
+  }
+
+  // ADDED: Feature highlights during loading
+  Widget _buildFeatureHighlights() {
+    return Column(
+      children: [
+        _buildFeatureItem(
+          icon: Icons.auto_awesome,
+          text: 'AI-Powered Learning',
+        ),
+        const SizedBox(height: 12),
+        _buildFeatureItem(
+          icon: Icons.schedule,
+          text: 'Smart Timetable',
+        ),
+        const SizedBox(height: 12),
+        _buildFeatureItem(
+          icon: Icons.analytics,
+          text: 'Progress Analytics',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFeatureItem({required IconData icon, required String text}) {
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 500),
+      opacity: 0.8,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            color: Colors.white70,
+            size: 16,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            text,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 14,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -388,5 +503,69 @@ class AIHelper {
     } catch (e) {
       return "Sorry, I couldn't process that right now.";
     }
+  }
+}
+
+// ADDED: Global Timetable helper
+class TimetableHelper {
+  static void navigateToTimetable(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const SmartTimetableScreen(),
+      ),
+    );
+  }
+
+  static void showAddSlotDialog(BuildContext context) {
+    final timetableProvider = Provider.of<TimetableProvider>(context, listen: false);
+
+    // This would open the add slot dialog
+    // For now, navigate to timetable screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const SmartTimetableScreen(),
+      ),
+    );
+  }
+
+  static Future<void> markSlotComplete(BuildContext context, String slotId) async {
+    final timetableProvider = Provider.of<TimetableProvider>(context, listen: false);
+    try {
+      await timetableProvider.toggleSlotCompletion(slotId, true);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Study slot marked as complete!'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  static List<Map<String, dynamic>> getTodaySchedule(BuildContext context) {
+    final timetableProvider = Provider.of<TimetableProvider>(context, listen: false);
+    final todaySlots = timetableProvider.getTodaySlots();
+
+    return todaySlots.map((slot) {
+      return {
+        'id': slot.id,
+        'title': slot.title,
+        'startTime': '${slot.startTime.hour}:${slot.startTime.minute.toString().padLeft(2, '0')}',
+        'endTime': '${slot.endTime.hour}:${slot.endTime.minute.toString().padLeft(2, '0')}',
+        'isCompleted': slot.isCompleted,
+        'color': slot.colorHex,
+      };
+    }).toList();
   }
 }
