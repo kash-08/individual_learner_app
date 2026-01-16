@@ -2,6 +2,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // ADD THIS
+import 'package:individual_learner_app/src/services/ai_short_answer_service.dart';
 import 'package:provider/provider.dart';
 import 'package:individual_learner_app/src/providers/auth_provider.dart';
 import 'package:individual_learner_app/src/providers/achievement_provider.dart';
@@ -23,6 +24,10 @@ import 'package:individual_learner_app/src/screens/ai_assistant_screen.dart';
 
 // ADDED: Import Smart Timetable Screen
 import 'package:individual_learner_app/src/screens/smart_timetable_screen.dart';
+
+// ADDED: Import AI Short Answer
+import 'package:individual_learner_app/src/providers/short_answer_provider.dart';
+import 'package:individual_learner_app/src/screens/ai_short_answer_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -60,6 +65,12 @@ class MyApp extends StatelessWidget {
         // NEW: AI Assistant Provider (initialize immediately)
         ChangeNotifierProvider(
           create: (_) => AIAssistantProvider(),
+          lazy: false, // Initialize immediately
+        ),
+
+        // ADDED: AI Short Answer Provider
+        ChangeNotifierProvider(
+          create: (_) => ShortAnswerProvider(),
           lazy: false, // Initialize immediately
         ),
 
@@ -182,17 +193,18 @@ class MyApp extends StatelessWidget {
         home: const AuthWrapper(),
         debugShowCheckedModeBanner: false,
 
-        // ADDED: Updated routes with Smart Timetable
+        // UPDATED: Updated routes with AI Short Answer Screen
         routes: {
           '/ai-assistant': (context) => const AIAssistantScreen(),
           '/smart-timetable': (context) => const SmartTimetableScreen(),
+          '/ai-short-answer': (context) => const AIShortAnswerScreen(), // ADDED: New route
         },
       ),
     );
   }
 }
 
-// Authentication Wrapper Widget - UPDATED with AI initialization
+// Authentication Wrapper Widget - UPDATED with AI Short Answer initialization
 class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
 
@@ -203,6 +215,7 @@ class AuthWrapper extends StatefulWidget {
 class _AuthWrapperState extends State<AuthWrapper> {
   bool _aiInitialized = false;
   bool _timetableInitialized = false;
+  bool _shortAnswerInitialized = false; // ADDED: AI Short Answer initialization flag
 
   @override
   void initState() {
@@ -222,17 +235,24 @@ class _AuthWrapperState extends State<AuthWrapper> {
         // Initialize Timetable
         final timetableProvider = Provider.of<TimetableProvider>(context, listen: false);
         await timetableProvider.loadTimetableSlots();
+
+        // ADDED: Initialize AI Short Answer Provider
+        final shortAnswerProvider = Provider.of<ShortAnswerProvider>(context, listen: false);
+        // Load any recent queries or initialize data
+        print('AI Short Answer Provider initialized');
       }
 
       setState(() {
         _aiInitialized = true;
         _timetableInitialized = true;
+        _shortAnswerInitialized = true; // ADDED: Set flag to true
       });
     } catch (e) {
       print('Provider initialization error: $e');
       setState(() {
         _aiInitialized = true; // Continue even if providers fail
         _timetableInitialized = true;
+        _shortAnswerInitialized = true; // ADDED: Set flag to true even on error
       });
     }
   }
@@ -242,7 +262,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
     final authProvider = Provider.of<AuthProvider>(context);
 
     // Show loading screen while checking auth state or initializing providers
-    if (authProvider.isLoading || !_aiInitialized || !_timetableInitialized) {
+    if (authProvider.isLoading || !_aiInitialized || !_timetableInitialized || !_shortAnswerInitialized) {
       return _buildLoadingScreen();
     }
 
@@ -294,7 +314,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
                           color: Color(0xFF4361EE),
                           size: 40,
                         ),
-                        // ADDED: Timetable icon overlay
+                        // Timetable icon overlay
                         Positioned(
                           bottom: 2,
                           right: 2,
@@ -309,6 +329,24 @@ class _AuthWrapperState extends State<AuthWrapper> {
                               Icons.schedule,
                               color: Colors.white,
                               size: 12,
+                            ),
+                          ),
+                        ),
+                        // ADDED: AI Short Answer icon overlay
+                        Positioned(
+                          top: 2,
+                          right: 2,
+                          child: Container(
+                            width: 20,
+                            height: 20,
+                            decoration: BoxDecoration(
+                              color: Colors.teal,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Icon(
+                              Icons.question_answer,
+                              color: Colors.white,
+                              size: 10,
                             ),
                           ),
                         ),
@@ -354,6 +392,14 @@ class _AuthWrapperState extends State<AuthWrapper> {
                         fontSize: 18,
                       ),
                     );
+                  } else if (!_shortAnswerInitialized) {
+                    return const Text(
+                      'Initializing AI Short Answer...',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 18,
+                      ),
+                    );
                   }
                   return const SizedBox.shrink();
                 },
@@ -362,7 +408,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
               // Loading animation dots
               _buildLoadingDots(),
               const SizedBox(height: 20),
-              // ADDED: Feature highlights
+              // UPDATED: Feature highlights with AI Short Answer
               _buildFeatureHighlights(),
             ],
           ),
@@ -398,10 +444,15 @@ class _AuthWrapperState extends State<AuthWrapper> {
     );
   }
 
-  // ADDED: Feature highlights during loading
+  // UPDATED: Feature highlights during loading with AI Short Answer
   Widget _buildFeatureHighlights() {
     return Column(
       children: [
+        _buildFeatureItem(
+          icon: Icons.question_answer,
+          text: 'AI Short Answers',
+        ),
+        const SizedBox(height: 12),
         _buildFeatureItem(
           icon: Icons.auto_awesome,
           text: 'AI-Powered Learning',
@@ -506,7 +557,74 @@ class AIHelper {
   }
 }
 
-// ADDED: Global Timetable helper
+// ADDED: Global AI Short Answer helper
+class AIShortAnswerHelper {
+  static void navigateToShortAnswer(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const AIShortAnswerScreen(),
+      ),
+    );
+  }
+
+  static Future<String> getQuickDefinition(BuildContext context, String term) async {
+    final shortAnswerProvider = Provider.of<ShortAnswerProvider>(context, listen: false);
+    try {
+      shortAnswerProvider.setQuery(term);
+      shortAnswerProvider.setAnswerType(AnswerType.definition);
+      await shortAnswerProvider.generateAnswer();
+
+      // Wait for response
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      final response = shortAnswerProvider.aiResponse;
+      if (response.isNotEmpty) {
+        return response;
+      }
+      return "Definition not available at the moment.";
+    } catch (e) {
+      return "Error getting definition: $e";
+    }
+  }
+
+  static Future<String> getQuickSummary(BuildContext context, String topic) async {
+    final shortAnswerProvider = Provider.of<ShortAnswerProvider>(context, listen: false);
+    try {
+      shortAnswerProvider.setQuery(topic);
+      shortAnswerProvider.setAnswerType(AnswerType.summary);
+      await shortAnswerProvider.generateAnswer();
+
+      // Wait for response
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      final response = shortAnswerProvider.aiResponse;
+      if (response.isNotEmpty) {
+        return response;
+      }
+      return "Summary not available at the moment.";
+    } catch (e) {
+      return "Error getting summary: $e";
+    }
+  }
+
+  static void copyResponseToClipboard(BuildContext context, String response) async {
+    if (response.isNotEmpty) {
+      // Implementation depends on your clipboard package
+      // Example: await Clipboard.setData(ClipboardData(text: response));
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Response copied to clipboard!'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+}
+
+// Global Timetable helper
 class TimetableHelper {
   static void navigateToTimetable(BuildContext context) {
     Navigator.push(

@@ -7,7 +7,8 @@ import '../models/course_model.dart';
 import '../models/session_model.dart';
 import '../providers/course_provider.dart';
 import '../providers/updates_provider.dart';
-import '../providers/timetable_provider.dart'; // ADDED
+import '../providers/timetable_provider.dart';
+import '../providers/short_answer_provider.dart'; // ADDED: New AI Short Answer Provider
 import '../components/course_progress_card.dart';
 import '../components/resume_activity_card.dart';
 import '../components/update_card.dart';
@@ -17,7 +18,8 @@ import 'achievements_screen.dart';
 import 'challenges_exams_screen.dart';
 import 'ai_assistant_screen.dart';
 import 'analytics_screen.dart';
-import 'smart_timetable_screen.dart'; // ADDED
+import 'smart_timetable_screen.dart';
+import 'ai_short_answer_screen.dart'; // ADDED: New AI Short Answer Screen
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -48,7 +50,9 @@ class _HomeScreenState extends State<HomeScreen> {
     // Load weekly updates
     _loadWeeklyUpdates();
     // Load timetable data
-    _loadTimetableData(); // ADDED
+    _loadTimetableData();
+    // Load AI Short Answer data
+    _loadShortAnswerData(); // ADDED: Load AI Short Answer data
   }
 
   Future<void> _loadCourses() async {
@@ -62,10 +66,19 @@ class _HomeScreenState extends State<HomeScreen> {
     await updatesProvider.loadUpdates();
   }
 
-  // ADDED: Load timetable data
+  // Load timetable data
   Future<void> _loadTimetableData() async {
     final timetableProvider = Provider.of<TimetableProvider>(context, listen: false);
     await timetableProvider.loadTimetableSlots();
+  }
+
+  // ADDED: Load AI Short Answer data
+  Future<void> _loadShortAnswerData() async {
+    final shortAnswerProvider = Provider.of<ShortAnswerProvider>(context, listen: false);
+    // Initialize any necessary data for AI Short Answer feature
+    // This could include loading recent queries from local storage
+    // or initializing API connections
+    print('AI Short Answer data initialized');
   }
 
   // Resume activity methods
@@ -150,10 +163,11 @@ class _HomeScreenState extends State<HomeScreen> {
               _buildStatsSection(),
               const SizedBox(height: 24),
 
-              // ADDED: Today's Study Schedule Section
+              // Today's Study Schedule Section
               _buildTodaysScheduleSection(),
               const SizedBox(height: 24),
 
+              // UPDATED: AI Tools Section with AI Short Answer
               _buildAIToolsSection(),
               const SizedBox(height: 24),
               _buildBrowseCoursesSection(),
@@ -473,7 +487,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ADDED: Today's Study Schedule Section
+  // Today's Study Schedule Section
   Widget _buildTodaysScheduleSection() {
     return Consumer<TimetableProvider>(
       builder: (context, timetableProvider, child) {
@@ -819,7 +833,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // UPDATED: AI Tools Section with Smart Timetable integration
+  // UPDATED: AI Tools Section with AI Short Answer integration
   Widget _buildAIToolsSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -832,6 +846,24 @@ class _HomeScreenState extends State<HomeScreen> {
               .headlineSmall,
         ),
         const SizedBox(height: 12),
+
+        // ADDED: AI Short Answer Card
+        _buildAIToolCard(
+          icon: Icons.question_answer,
+          title: 'AI Short Answers',
+          description: 'Quick definitions & summaries',
+          color: Colors.teal,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AIShortAnswerScreen(),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 8),
+
         _buildAIToolCard(
           icon: Icons.schedule,
           title: 'Smart Timetable',
