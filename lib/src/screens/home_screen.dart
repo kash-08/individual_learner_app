@@ -9,6 +9,7 @@ import '../providers/course_provider.dart';
 import '../providers/updates_provider.dart';
 import '../providers/timetable_provider.dart';
 import '../providers/short_answer_provider.dart'; // ADDED: New AI Short Answer Provider
+import '../providers/profile_provider.dart'; // ADDED: Profile Provider
 import '../components/course_progress_card.dart';
 import '../components/resume_activity_card.dart';
 import '../components/update_card.dart';
@@ -20,6 +21,7 @@ import 'ai_assistant_screen.dart';
 import 'analytics_screen.dart';
 import 'smart_timetable_screen.dart';
 import 'ai_short_answer_screen.dart'; // ADDED: New AI Short Answer Screen
+import 'profile_screen.dart'; // ADDED: Profile Screen
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -53,6 +55,8 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadTimetableData();
     // Load AI Short Answer data
     _loadShortAnswerData(); // ADDED: Load AI Short Answer data
+    // Load profile data
+    _loadProfileData(); // ADDED: Load Profile data
   }
 
   Future<void> _loadCourses() async {
@@ -79,6 +83,12 @@ class _HomeScreenState extends State<HomeScreen> {
     // This could include loading recent queries from local storage
     // or initializing API connections
     print('AI Short Answer data initialized');
+  }
+
+  // ADDED: Load Profile data
+  Future<void> _loadProfileData() async {
+    final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
+    await profileProvider.loadUserProfile();
   }
 
   // Resume activity methods
@@ -170,6 +180,11 @@ class _HomeScreenState extends State<HomeScreen> {
               // UPDATED: AI Tools Section with AI Short Answer
               _buildAIToolsSection(),
               const SizedBox(height: 24),
+
+              // ADDED: Profile & Analytics Section
+              _buildProfileAnalyticsSection(),
+              const SizedBox(height: 24),
+
               _buildBrowseCoursesSection(),
               const SizedBox(height: 24),
               _buildQuickActionsSection(),
@@ -208,6 +223,40 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+      actions: [
+        // ADDED: Profile Icon in AppBar
+        Consumer<ProfileProvider>(
+          builder: (context, profileProvider, child) {
+            final profile = profileProvider.userProfile;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: IconButton(
+                icon: CircleAvatar(
+                  radius: 16,
+                  backgroundImage: profile?.profileImageUrl != null
+                      ? NetworkImage(profile!.profileImageUrl!)
+                      : null,
+                  child: profile?.profileImageUrl == null
+                      ? const Icon(Icons.person, size: 16, color: Colors.white)
+                      : null,
+                  backgroundColor: profile?.profileImageUrl == null
+                      ? Colors.white.withOpacity(0.3)
+                      : null,
+                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ProfileScreen(),
+                    ),
+                  );
+                },
+                tooltip: 'Profile & Analytics',
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 
@@ -419,58 +468,102 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildWelcomeSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Welcome back, ${currentUser.name}!',
-          style: Theme
-              .of(context)
-              .textTheme
-              .headlineLarge,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Ready to continue your learning journey?',
-          style: Theme
-              .of(context)
-              .textTheme
-              .bodyMedium,
-        ),
-      ],
+    return Consumer<ProfileProvider>(
+      builder: (context, profileProvider, child) {
+        final profile = profileProvider.userProfile;
+        final userName = profile?.name ?? currentUser.name;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Welcome back, $userName!',
+              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                fontSize: 28,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Ready to continue your learning journey?',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontSize: 16,
+                color: Colors.grey[700],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
   Widget _buildStatsSection() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF4361EE), Color(0xFF3A0CA3)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildStatItem('${currentUser.xpPoints}', 'XP Points'),
-          _buildStatItem('${currentUser.dayStreak}', 'Day Streak'),
-          _buildStatItem('${currentUser.studyTimeThisWeek}h', 'This Week'),
-        ],
-      ),
+    return Consumer<ProfileProvider>(
+      builder: (context, profileProvider, child) {
+        final analytics = profileProvider.learningAnalytics;
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF4361EE), Color(0xFF3A0CA3)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildStatItem(
+                analytics?.totalXpEarned.toString() ?? currentUser.xpPoints.toString(),
+                'XP Points',
+                Icons.star,
+              ),
+              _buildStatItem(
+                currentUser.dayStreak.toString(),
+                'Day Streak',
+                Icons.local_fire_department,
+              ),
+              _buildStatItem(
+                analytics?.totalStudyHours.toString() ?? currentUser.studyTimeThisWeek.toStringAsFixed(1) + 'h',
+                'Study Hours',
+                Icons.timer,
+              ),
+              _buildStatItem(
+                analytics?.totalLessonsCompleted.toString() ?? '0',
+                'Lessons',
+                Icons.check_circle,
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildStatItem(String value, String label) {
+  Widget _buildStatItem(String value, String label, IconData icon) {
     return Column(
       children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Icon(
+            icon,
+            color: Colors.white,
+            size: 20,
+          ),
+        ),
+        const SizedBox(height: 8),
         Text(
           value,
           style: const TextStyle(
-            fontSize: 20,
+            fontSize: 18,
             fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
@@ -831,6 +924,207 @@ class _HomeScreenState extends State<HomeScreen> {
     } else {
       return '${date.day}/${date.month}';
     }
+  }
+
+  // ADDED: Profile & Analytics Section
+  Widget _buildProfileAnalyticsSection() {
+    return Consumer<ProfileProvider>(
+      builder: (context, profileProvider, child) {
+        final profile = profileProvider.userProfile;
+        final analytics = profileProvider.learningAnalytics;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Profile & Analytics',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.arrow_forward),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ProfileScreen(),
+                      ),
+                    );
+                  },
+                  tooltip: 'View Full Profile',
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    // Profile Summary
+                    ListTile(
+                      leading: CircleAvatar(
+                        radius: 24,
+                        backgroundImage: profile?.profileImageUrl != null
+                            ? NetworkImage(profile!.profileImageUrl!)
+                            : null,
+                        child: profile?.profileImageUrl == null
+                            ? const Icon(Icons.person, size: 24)
+                            : null,
+                      ),
+                      title: Text(
+                        profile?.name ?? 'Your Profile',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      subtitle: profile?.studyFocus != null
+                          ? Text(profile!.studyFocus!)
+                          : null,
+                      trailing: ElevatedButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ProfileScreen(),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF4361EE),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                        ),
+                        child: const Text('View Profile'),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Quick Analytics
+                    if (analytics != null) ...[
+                      const Divider(),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Quick Stats',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _buildAnalyticsItem(
+                            '${analytics.averageScore.toStringAsFixed(1)}%',
+                            'Avg Score',
+                            Icons.trending_up,
+                            Colors.green,
+                          ),
+                          _buildAnalyticsItem(
+                            '${analytics.consistencyScore.toStringAsFixed(1)}%',
+                            'Consistency',
+                            Icons.trending_up,
+                            Colors.blue,
+                          ),
+                          _buildAnalyticsItem(
+                            '${analytics.totalLessonsCompleted}',
+                            'Lessons',
+                            Icons.school,
+                            Colors.purple,
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      // Course Preferences
+                      if (profileProvider.appSettings.preferredCategories.isNotEmpty)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Divider(),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'Learning Preferences',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 4,
+                              children: profileProvider.appSettings.preferredCategories
+                                  .map((category) => Chip(
+                                label: Text(category),
+                                backgroundColor: const Color(0xFF4361EE).withOpacity(0.1),
+                                labelStyle: const TextStyle(
+                                  color: Color(0xFF4361EE),
+                                  fontSize: 12,
+                                ),
+                              ))
+                                  .toList(),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildAnalyticsItem(String value, String label, IconData icon, Color color) {
+    return Column(
+      children: [
+        Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: color, size: 24),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Colors.grey,
+          ),
+        ),
+      ],
+    );
   }
 
   // UPDATED: AI Tools Section with AI Short Answer integration
@@ -1426,34 +1720,66 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ChallengesExamsScreen(),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ChallengesExamsScreen(),
+                    ),
+                  );
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.orange,
+                  side: const BorderSide(color: Colors.orange),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
-              );
-            },
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.orange,
-              side: const BorderSide(color: Colors.orange),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.quiz, size: 18),
+                    SizedBox(width: 8),
+                    Text('Challenges & Exams'),
+                  ],
+                ),
               ),
-              padding: const EdgeInsets.symmetric(vertical: 12),
             ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.quiz, size: 18),
-                SizedBox(width: 8),
-                Text('Challenges & Exams'),
-              ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ProfileScreen(),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.purple,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.person, size: 18),
+                    SizedBox(width: 8),
+                    Text('Profile'),
+                  ],
+                ),
+              ),
             ),
-          ),
+          ],
         ),
       ],
     );

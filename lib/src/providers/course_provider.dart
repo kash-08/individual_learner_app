@@ -7,6 +7,37 @@ import '../services/session_service.dart';
 class CourseProvider with ChangeNotifier {
   List<Course> _enrolledCourses = [];
   List<Course> _availableCourses = [];
+  // ADD THIS METHOD
+  List<String> getAllCategories() {
+    // Get unique categories from all courses
+    final categories = <String>{};
+
+    // Add categories from enrolled courses
+    for (final course in _enrolledCourses) {
+      categories.add(course.category);
+    }
+
+    // Add categories from available courses
+    for (final course in _availableCourses) {
+      categories.add(course.category);
+    }
+
+    // If no categories found, return default categories
+    if (categories.isEmpty) {
+      return [
+        'Technology',
+        'Science',
+        'Mathematics',
+        'Business',
+        'Arts',
+        'Languages',
+        'Health',
+        'Social Sciences'
+      ];
+    }
+
+    return categories.toList()..sort();
+  }
   bool _isLoading = false;
   String? _error;
 

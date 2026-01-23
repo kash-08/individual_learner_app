@@ -2,6 +2,9 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // ADD THIS
+import 'package:individual_learner_app/src/models/profile_model.dart';
+import 'package:individual_learner_app/src/models/settings_model.dart';
+import 'package:individual_learner_app/src/providers/profile_provider.dart';
 import 'package:individual_learner_app/src/services/ai_short_answer_service.dart';
 import 'package:provider/provider.dart';
 import 'package:individual_learner_app/src/providers/auth_provider.dart';
@@ -28,6 +31,16 @@ import 'package:individual_learner_app/src/screens/smart_timetable_screen.dart';
 // ADDED: Import AI Short Answer
 import 'package:individual_learner_app/src/providers/short_answer_provider.dart';
 import 'package:individual_learner_app/src/screens/ai_short_answer_screen.dart';
+
+// ADDED: Import Profile Screen
+import 'package:individual_learner_app/src/screens/profile_screen.dart';
+
+// ADDED: Import Profile Components
+import 'package:individual_learner_app/src/components/profile_header.dart';
+import 'package:individual_learner_app/src/components/stats_overview.dart';
+import 'package:individual_learner_app/src/components/performance_charts.dart';
+import 'package:individual_learner_app/src/components/profile_section.dart';
+import 'package:individual_learner_app/src/components/settings_section.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -91,6 +104,12 @@ class MyApp extends StatelessWidget {
 
         // Quiz/Exam Management
         ChangeNotifierProvider(create: (_) => ExamProvider()),
+
+        // ADDED: Profile Provider (moved to proper position)
+        ChangeNotifierProvider(
+          create: (_) => ProfileProvider(),
+          lazy: false, // Initialize immediately to load user profile
+        ),
 
         // Services
         Provider<SessionService>(create: (_) => SessionService()),
@@ -193,18 +212,19 @@ class MyApp extends StatelessWidget {
         home: const AuthWrapper(),
         debugShowCheckedModeBanner: false,
 
-        // UPDATED: Updated routes with AI Short Answer Screen
+        // UPDATED: Updated routes with Profile Screen
         routes: {
           '/ai-assistant': (context) => const AIAssistantScreen(),
           '/smart-timetable': (context) => const SmartTimetableScreen(),
-          '/ai-short-answer': (context) => const AIShortAnswerScreen(), // ADDED: New route
+          '/ai-short-answer': (context) => const AIShortAnswerScreen(),
+          '/profile': (context) => const ProfileScreen(), // ADDED: Profile route
         },
       ),
     );
   }
 }
 
-// Authentication Wrapper Widget - UPDATED with AI Short Answer initialization
+// Authentication Wrapper Widget - UPDATED with Profile initialization
 class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
 
@@ -215,7 +235,8 @@ class AuthWrapper extends StatefulWidget {
 class _AuthWrapperState extends State<AuthWrapper> {
   bool _aiInitialized = false;
   bool _timetableInitialized = false;
-  bool _shortAnswerInitialized = false; // ADDED: AI Short Answer initialization flag
+  bool _shortAnswerInitialized = false;
+  bool _profileInitialized = false; // ADDED: Profile initialization flag
 
   @override
   void initState() {
@@ -236,7 +257,11 @@ class _AuthWrapperState extends State<AuthWrapper> {
         final timetableProvider = Provider.of<TimetableProvider>(context, listen: false);
         await timetableProvider.loadTimetableSlots();
 
-        // ADDED: Initialize AI Short Answer Provider
+        // ADDED: Initialize Profile Provider
+        final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
+        await profileProvider.loadUserProfile();
+
+        // Initialize AI Short Answer Provider
         final shortAnswerProvider = Provider.of<ShortAnswerProvider>(context, listen: false);
         // Load any recent queries or initialize data
         print('AI Short Answer Provider initialized');
@@ -245,14 +270,16 @@ class _AuthWrapperState extends State<AuthWrapper> {
       setState(() {
         _aiInitialized = true;
         _timetableInitialized = true;
-        _shortAnswerInitialized = true; // ADDED: Set flag to true
+        _shortAnswerInitialized = true;
+        _profileInitialized = true; // ADDED: Set flag to true
       });
     } catch (e) {
       print('Provider initialization error: $e');
       setState(() {
         _aiInitialized = true; // Continue even if providers fail
         _timetableInitialized = true;
-        _shortAnswerInitialized = true; // ADDED: Set flag to true even on error
+        _shortAnswerInitialized = true;
+        _profileInitialized = true; // ADDED: Set flag to true even on error
       });
     }
   }
@@ -262,7 +289,11 @@ class _AuthWrapperState extends State<AuthWrapper> {
     final authProvider = Provider.of<AuthProvider>(context);
 
     // Show loading screen while checking auth state or initializing providers
-    if (authProvider.isLoading || !_aiInitialized || !_timetableInitialized || !_shortAnswerInitialized) {
+    if (authProvider.isLoading ||
+        !_aiInitialized ||
+        !_timetableInitialized ||
+        !_shortAnswerInitialized ||
+        !_profileInitialized) {
       return _buildLoadingScreen();
     }
 
@@ -332,7 +363,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
                             ),
                           ),
                         ),
-                        // ADDED: AI Short Answer icon overlay
+                        // AI Short Answer icon overlay
                         Positioned(
                           top: 2,
                           right: 2,
@@ -345,6 +376,24 @@ class _AuthWrapperState extends State<AuthWrapper> {
                             ),
                             child: const Icon(
                               Icons.question_answer,
+                              color: Colors.white,
+                              size: 10,
+                            ),
+                          ),
+                        ),
+                        // ADDED: Profile icon overlay
+                        Positioned(
+                          bottom: 2,
+                          left: 2,
+                          child: Container(
+                            width: 20,
+                            height: 20,
+                            decoration: BoxDecoration(
+                              color: Colors.purple,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Icon(
+                              Icons.person,
                               color: Colors.white,
                               size: 10,
                             ),
@@ -400,6 +449,14 @@ class _AuthWrapperState extends State<AuthWrapper> {
                         fontSize: 18,
                       ),
                     );
+                  } else if (!_profileInitialized) {
+                    return const Text(
+                      'Loading your profile...',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 18,
+                      ),
+                    );
                   }
                   return const SizedBox.shrink();
                 },
@@ -408,7 +465,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
               // Loading animation dots
               _buildLoadingDots(),
               const SizedBox(height: 20),
-              // UPDATED: Feature highlights with AI Short Answer
+              // UPDATED: Feature highlights with Profile
               _buildFeatureHighlights(),
             ],
           ),
@@ -444,10 +501,15 @@ class _AuthWrapperState extends State<AuthWrapper> {
     );
   }
 
-  // UPDATED: Feature highlights during loading with AI Short Answer
+  // UPDATED: Feature highlights during loading with Profile
   Widget _buildFeatureHighlights() {
     return Column(
       children: [
+        _buildFeatureItem(
+          icon: Icons.person,
+          text: 'Personal Profile',
+        ),
+        const SizedBox(height: 12),
         _buildFeatureItem(
           icon: Icons.question_answer,
           text: 'AI Short Answers',
@@ -473,26 +535,26 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   Widget _buildFeatureItem({required IconData icon, required String text}) {
     return AnimatedOpacity(
-      duration: const Duration(milliseconds: 500),
-      opacity: 0.8,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            icon,
-            color: Colors.white70,
-            size: 16,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            text,
-            style: const TextStyle(
+        duration: const Duration(milliseconds: 500),
+        opacity: 0.8,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
               color: Colors.white70,
-              fontSize: 14,
+              size: 16,
             ),
-          ),
-        ],
-      ),
+            const SizedBox(width: 8),
+            Text(
+              text,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
     );
   }
 }
@@ -557,7 +619,94 @@ class AIHelper {
   }
 }
 
-// ADDED: Global AI Short Answer helper
+// ADDED: Global Profile Helper
+class ProfileHelper {
+  static void navigateToProfile(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ProfileScreen(),
+      ),
+    );
+  }
+
+  static Future<void> updateUserProfile(BuildContext context, {
+    String? name,
+    String? bio,
+    String? studyFocus,
+    String? educationLevel,
+    String? preferredLanguage,
+    List<String>? interests,
+  }) async {
+    final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
+    try {
+      await profileProvider.updateProfile(
+        name: name,
+        bio: bio,
+        studyFocus: studyFocus,
+        educationLevel: educationLevel,
+        preferredLanguage: preferredLanguage,
+        interests: interests,
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Profile updated successfully'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update profile: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  static Future<void> updateUserSettings(BuildContext context, AppSettings settings) async {
+    final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
+    try {
+      await profileProvider.updateSettings(settings);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Settings updated successfully'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update settings: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  static UserProfile? getUserProfile(BuildContext context) {
+    final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
+    return profileProvider.userProfile;
+  }
+
+  static LearningAnalytics? getLearningAnalytics(BuildContext context) {
+    final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
+    return profileProvider.learningAnalytics;
+  }
+
+  static AppSettings getUserSettings(BuildContext context) {
+    final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
+    return profileProvider.appSettings;
+  }
+}
+
+// Global AI Short Answer helper
 class AIShortAnswerHelper {
   static void navigateToShortAnswer(BuildContext context) {
     Navigator.push(
