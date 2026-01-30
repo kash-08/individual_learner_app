@@ -120,7 +120,7 @@ class _AssessmentListTabState extends State<AssessmentListTab> {
               builder: (context) => TakeAssessmentScreen(
                 quizId: assessment['id'],
                 quizName: assessment['name'],
-                quizType: assessment['type'],
+                quizType: assessment['type'], isDemo: true,
               ),
             ),
           );

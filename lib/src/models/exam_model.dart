@@ -125,4 +125,6 @@ class QuizResult {
           : null,
     );
   }
+
+  num? get incorrectAnswers => null;
 }

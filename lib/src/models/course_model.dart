@@ -62,4 +62,6 @@ class Course {
       difficulty: map['difficulty'] ?? 'Beginner',
     );
   }
+
+  get estimatedHours => null;
 }

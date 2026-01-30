@@ -59,6 +59,7 @@ dependencies:
   google_generative_ai: ^0.4.7
   table_calendar: ^3.0.9
   fl_chart: ^0.66.0
+  share_plus: ^7.0.2
 
 
 
@@ -87,7 +88,7 @@ flutter:
   uses-material-design: true
   assets:
     - firebase_sample_data.json
-    - assets/animations/
+    - assets/images/google_logo.png
 
 
   # To add assets to your application, add an assets section, like this:

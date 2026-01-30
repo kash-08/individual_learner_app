@@ -12,7 +12,20 @@
           "package_name": "com.algorithmaliens.individual_learner_app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "118669659979-vpilltrp2qvu8s4bhnd86bupl4os0t9a.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.algorithmaliens.individual_learner_app",
+            "certificate_hash": "6ecf954645d14cbf7fb3f0628bf53252f90d5198"
+          }
+        },
+        {
+          "client_id": "118669659979-sf4g33f8dfcanj9dce5cfds8bdkcjjm9.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyB6-12HTk4NZD_A7yiBnqbET4BPYmCppSk"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "118669659979-sf4g33f8dfcanj9dce5cfds8bdkcjjm9.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "118669659979-1i6pcpscr3ud66l18olqtiftc71klthd.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.algorithmaliens.individualLearnerApp"
+              }
+            }
+          ]
         }
       }
     }

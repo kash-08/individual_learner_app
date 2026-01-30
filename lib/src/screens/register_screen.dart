@@ -21,6 +21,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _agreeToTerms = false;
+  bool _showSuccessMessage = false;
 
   @override
   void dispose() {
@@ -33,9 +34,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final authProvider = Provider.of<AuthProvider>(context, listen: true);
     final theme = Theme.of(context);
-    final size = MediaQuery.of(context).size;
 
     return Scaffold(
       body: SafeArea(
@@ -66,6 +66,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ),
               const SizedBox(height: 32),
+
+              // Success Message (if any)
+              if (authProvider.successMessage != null && !authProvider.isLoading)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.green.shade100),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.green.shade400),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          authProvider.successMessage!,
+                          style: TextStyle(color: Colors.green.shade700),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
               // Error Message
               if (authProvider.error != null)
@@ -105,9 +129,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       controller: _nameController,
                       decoration: InputDecoration(
                         labelText: 'Full Name',
+                        hintText: 'Enter your full name',
                         prefixIcon: const Icon(Icons.person_outline),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
                         ),
                       ),
                       validator: (value) {
@@ -127,9 +156,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       controller: _emailController,
                       decoration: InputDecoration(
                         labelText: 'Email',
+                        hintText: 'Enter your email address',
                         prefixIcon: const Icon(Icons.email_outlined),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
                         ),
                       ),
                       keyboardType: TextInputType.emailAddress,
@@ -137,8 +171,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         if (value == null || value.isEmpty) {
                           return 'Please enter your email';
                         }
-                        if (!value.contains('@') || !value.contains('.')) {
-                          return 'Please enter a valid email';
+                        if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+                          return 'Please enter a valid email address';
                         }
                         return null;
                       },
@@ -150,12 +184,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       controller: _passwordController,
                       decoration: InputDecoration(
                         labelText: 'Password',
+                        hintText: 'Enter at least 6 characters',
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
                           icon: Icon(
                             _obscurePassword
                                 ? Icons.visibility_off
                                 : Icons.visibility,
+                            color: Colors.grey.shade600,
                           ),
                           onPressed: () {
                             setState(() {
@@ -165,6 +201,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
                         ),
                       ),
                       obscureText: _obscurePassword,
@@ -178,19 +218,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      child: Text(
+                        'Use at least 6 characters with letters and numbers',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
 
                     // Confirm Password Field
                     TextFormField(
                       controller: _confirmPasswordController,
                       decoration: InputDecoration(
                         labelText: 'Confirm Password',
+                        hintText: 'Re-enter your password',
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
                           icon: Icon(
                             _obscureConfirmPassword
                                 ? Icons.visibility_off
                                 : Icons.visibility,
+                            color: Colors.grey.shade600,
                           ),
                           onPressed: () {
                             setState(() {
@@ -200,6 +253,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
                         ),
                       ),
                       obscureText: _obscureConfirmPassword,
@@ -216,60 +273,77 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     const SizedBox(height: 16),
 
                     // Terms & Conditions Checkbox
-                    Row(
-                      children: [
-                        Checkbox(
-                          value: _agreeToTerms,
-                          onChanged: (value) {
-                            setState(() {
-                              _agreeToTerms = value ?? false;
-                            });
-                          },
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Checkbox(
+                            value: _agreeToTerms,
+                            onChanged: (value) {
+                              setState(() {
+                                _agreeToTerms = value ?? false;
+                              });
+                            },
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            visualDensity: VisualDensity.compact,
                           ),
-                        ),
-                        Expanded(
-                          child: Wrap(
-                            children: [
-                              Text(
-                                'I agree to the ',
-                                style: TextStyle(color: Colors.grey.shade700),
-                              ),
-                              GestureDetector(
-                                onTap: () {
-                                  // Navigate to terms screen
-                                  _showTermsDialog(context);
-                                },
-                                child: Text(
-                                  'Terms & Conditions',
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: RichText(
+                                text: TextSpan(
                                   style: TextStyle(
-                                    color: theme.primaryColor,
-                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey.shade700,
+                                    fontSize: 14,
                                   ),
+                                  children: [
+                                    const TextSpan(text: 'I agree to the '),
+                                    WidgetSpan(
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          _showTermsDialog(context);
+                                        },
+                                        child: Text(
+                                          'Terms & Conditions',
+                                          style: TextStyle(
+                                            color: theme.primaryColor,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const TextSpan(text: ' and '),
+                                    WidgetSpan(
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          _showPrivacyDialog(context);
+                                        },
+                                        child: Text(
+                                          'Privacy Policy',
+                                          style: TextStyle(
+                                            color: theme.primaryColor,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              Text(
-                                ' and ',
-                                style: TextStyle(color: Colors.grey.shade700),
-                              ),
-                              GestureDetector(
-                                onTap: () {
-                                  // Navigate to privacy policy
-                                  _showPrivacyDialog(context);
-                                },
-                                child: Text(
-                                  'Privacy Policy',
-                                  style: TextStyle(
-                                    color: theme.primaryColor,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 24),
                   ],
@@ -284,17 +358,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ? null
                       : () async {
                     if (_formKey.currentState!.validate()) {
-                      try {
-                        await authProvider.signUpWithEmail(
-                          email: _emailController.text.trim(),
-                          password: _passwordController.text,
-                          name: _nameController.text.trim(),
-                        );
-                        // Show success message
-                        _showSuccessDialog(context);
-                      } catch (e) {
-                        // Error already shown by provider
-                      }
+                      await _registerUser(context, authProvider);
                     }
                   },
                   style: ElevatedButton.styleFrom(
@@ -302,6 +366,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
+                    backgroundColor: theme.primaryColor,
+                    foregroundColor: Colors.white,
                   ),
                   child: authProvider.isLoading
                       ? const SizedBox(
@@ -314,7 +380,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   )
                       : const Text(
                     'Create Account',
-                    style: TextStyle(fontSize: 16),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
@@ -345,8 +414,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       : () async {
                     try {
                       await authProvider.signInWithGoogle();
+                      // Google sign-in keeps user logged in
+                      // If you want them to be forced to login again,
+                      // uncomment the line below:
+                      // await authProvider.signOut();
                     } catch (e) {
                       // Error handled by provider
+                      print('Google sign-up error: $e');
                     }
                   },
                   style: OutlinedButton.styleFrom(
@@ -356,18 +430,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     side: BorderSide(color: Colors.grey.shade300),
                   ),
-                  icon: Image.asset(
-                    'assets/images/google_logo.png',
-                    height: 24,
+                  icon: Container(
                     width: 24,
+                    height: 24,
+                    child: Center(
+                      child: Text(
+                        'G',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.red,
+                        ),
+                      ),
+                    ),
                   ),
                   label: const Text(
                     'Sign up with Google',
-                    style: TextStyle(fontSize: 16),
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.black87,
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
 
               // Login Link
               Center(
@@ -376,7 +462,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   children: [
                     Text(
                       "Already have an account?",
-                      style: TextStyle(color: Colors.grey.shade600),
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 15,
+                      ),
                     ),
                     TextButton(
                       onPressed: () {
@@ -392,6 +481,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         style: TextStyle(
                           color: theme.primaryColor,
                           fontWeight: FontWeight.bold,
+                          fontSize: 15,
                         ),
                       ),
                     ),
@@ -403,6 +493,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
       ),
     );
+  }
+
+  // ========== REGISTER USER METHOD ==========
+  Future<void> _registerUser(BuildContext context, AuthProvider authProvider) async {
+    try {
+      // Clear any previous messages
+      authProvider.clearError();
+      authProvider.clearSuccessMessage();
+
+      // Call signUpWithEmail with requireEmailVerification = false
+      // This will sign out the user after registration
+      await authProvider.signUpWithEmail(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        name: _nameController.text.trim(),
+        requireEmailVerification: false, // Set to true if you want email verification
+      );
+
+      // Check if registration was successful
+      if (authProvider.successMessage != null) {
+        // Show success message
+        _showSuccessDialog(context);
+      }
+
+    } catch (e) {
+      // Error is already handled by provider
+      print('Registration error: $e');
+    }
   }
 
   void _showTermsDialog(BuildContext context) {
@@ -486,21 +604,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.check_circle, color: Colors.green),
-            SizedBox(width: 10),
-            Text('Registration Successful'),
+            Icon(Icons.check_circle, color: Colors.green.shade600),
+            const SizedBox(width: 12),
+            const Text(
+              'Registration Successful!',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ],
         ),
-        content: const Column(
+        content: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Welcome to our learning community!'),
-            SizedBox(height: 10),
+            const Text(
+              'Your account has been created successfully.',
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 8),
             Text(
-              'A verification email has been sent to your email address.',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+              'Please sign in with your email and password to continue.',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade600,
+              ),
             ),
           ],
         ),
@@ -508,9 +636,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(context); // Close dialog
-              Navigator.pop(context); // Go back to login
+              // Clear form
+              _nameController.clear();
+              _emailController.clear();
+              _passwordController.clear();
+              _confirmPasswordController.clear();
+              setState(() {
+                _agreeToTerms = false;
+              });
+              // Navigate to login screen
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const LoginScreen(),
+                ),
+              );
             },
-            child: const Text('Continue'),
+            style: TextButton.styleFrom(
+              backgroundColor: Theme.of(context).primaryColor,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Go to Login'),
           ),
         ],
       ),

@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'home_screen.dart';
 import 'ai_assistant_screen.dart';
 import 'challenges_exams_screen.dart';
-import 'analytics_screen.dart';
+import 'profile_screen.dart'; // Changed from analytics_screen.dart
 import 'progress_updates_screen.dart';
-import 'achievements_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -21,7 +20,7 @@ class _MainScreenState extends State<MainScreen> {
     const HomeScreen(),
     const AIAssistantScreen(),
     const ChallengesExamsScreen(),
-    const AnalyticsScreen(),
+    const ProfileScreen(), // Changed from AnalyticsScreen()
     const ProgressUpdatesScreen(),
   ];
 
@@ -57,8 +56,8 @@ class _MainScreenState extends State<MainScreen> {
             label: 'Challenges',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.analytics),
-            label: 'Analytics',
+            icon: Icon(Icons.person), // Changed from Icons.analytics
+            label: 'Profile', // Changed from 'Analytics'
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.timeline),

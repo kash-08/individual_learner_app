@@ -132,7 +132,7 @@ class ExamProvider extends ChangeNotifier {
     required int totalQuestions,
     String? userId,
     Map<String, dynamic>? details,
-    List<Map<String, dynamic>>? questionResults, int? totalPoints,
+    List<Map<String, dynamic>>? questionResults, int? totalPoints, required String difficulty,
   }) async {
     try {
       _isLoading = true;

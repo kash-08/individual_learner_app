@@ -3,9 +3,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/assesment_service.dart';
 import '../models/exam_model.dart';
+import 'result_wrapper.dart'; // ADD THIS IMPORT
 
 class ResultsTab extends StatefulWidget {
-  // Make userId optional with a default value
   final String? userId;
 
   const ResultsTab({Key? key, this.userId}) : super(key: key);
@@ -27,7 +27,6 @@ class _ResultsTabState extends State<ResultsTab> {
 
   @override
   Widget build(BuildContext context) {
-    // Use widget.userId if provided, otherwise use current user's ID
     final userId = widget.userId ?? _currentUserId;
 
     if (userId == null) {
@@ -92,8 +91,8 @@ class _ResultsTabState extends State<ResultsTab> {
                 SizedBox(height: 8),
                 ElevatedButton(
                   onPressed: () {
-                    // Navigate to quizzes - you can adjust this based on your navigation
-                    // Navigator.pushNamed(context, '/challenges');
+                    // Navigate to quizzes
+                    // You can use: Navigator.pushNamed(context, '/challenges');
                   },
                   child: Text('Take a Quiz'),
                 ),
@@ -128,13 +127,13 @@ class _ResultsTabState extends State<ResultsTab> {
       ),
       child: InkWell(
         onTap: () {
-          // Navigate to result details
-          // Navigator.push(
-          //   context,
-          //   MaterialPageRoute(
-          //     builder: (context) => ResultDetailsScreen(result: result),
-          //   ),
-          // );
+          // Navigate using the wrapper
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ResultDetailsWrapper(result: result),
+            ),
+          );
         },
         borderRadius: BorderRadius.circular(12),
         child: Padding(

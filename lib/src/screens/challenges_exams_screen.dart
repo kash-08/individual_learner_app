@@ -21,6 +21,98 @@ class _ChallengesExamsScreenState extends State<ChallengesExamsScreen> {
   List<Map<String, dynamic>> _challenges = [];
   List<Map<String, dynamic>> _exams = [];
 
+  // Static list of assessments that will be available for all users
+  final List<Map<String, dynamic>> _staticAssessments = [
+    // Quizzes
+    {
+      'id': 'quiz_1',
+      'name': 'Programming Basics Quiz',
+      'description': 'Test your programming fundamentals knowledge',
+      'type': 'quiz',
+      'difficulty': 'Beginner',
+      'totalQuestions': 3,
+      'totalPoints': 100,
+      'timeLimit': 600, // 10 minutes in seconds
+      'category': 'Programming Basics',
+      'isDemo': false,
+    },
+    {
+      'id': 'quiz_2',
+      'name': 'Dart Syntax Quiz',
+      'description': 'Test your Dart programming language knowledge',
+      'type': 'quiz',
+      'difficulty': 'Beginner',
+      'totalQuestions': 5,
+      'totalPoints': 150,
+      'timeLimit': 900, // 15 minutes in seconds
+      'category': 'Dart Programming',
+      'isDemo': false,
+    },
+    // Coding Challenges
+    {
+      'id': 'coding_1',
+      'name': 'Dart Coding Challenge',
+      'description': 'Practice your Dart programming skills',
+      'type': 'coding',
+      'difficulty': 'Intermediate',
+      'totalQuestions': 2,
+      'totalPoints': 150,
+      'timeLimit': 1800, // 30 minutes in seconds
+      'category': 'Dart Coding',
+      'isDemo': false,
+    },
+    {
+      'id': 'coding_2',
+      'name': 'Flutter Widget Challenge',
+      'description': 'Create responsive Flutter widgets',
+      'type': 'coding',
+      'difficulty': 'Intermediate',
+      'totalQuestions': 3,
+      'totalPoints': 200,
+      'timeLimit': 2700, // 45 minutes in seconds
+      'category': 'Flutter Development',
+      'isDemo': false,
+    },
+    // Mock Exams
+    {
+      'id': 'exam_1',
+      'name': 'Flutter Mock Exam',
+      'description': 'Full-length Flutter certification practice test',
+      'type': 'exam',
+      'difficulty': 'Advanced',
+      'totalQuestions': 4,
+      'totalPoints': 200,
+      'timeLimit': 3600, // 60 minutes in seconds
+      'category': 'Flutter Certification',
+      'isDemo': false,
+    },
+    // Demo Quizzes (always available)
+    {
+      'id': 'demo_quiz_1',
+      'name': 'Programming Basics Demo',
+      'description': 'Test your programming fundamentals knowledge',
+      'type': 'quiz',
+      'difficulty': 'Beginner',
+      'totalQuestions': 3,
+      'totalPoints': 100,
+      'timeLimit': 600, // 10 minutes in seconds
+      'category': 'Demo',
+      'isDemo': true,
+    },
+    {
+      'id': 'demo_quiz_2',
+      'name': 'Dart Coding Demo',
+      'description': 'Practice your Dart programming skills',
+      'type': 'coding',
+      'difficulty': 'Intermediate',
+      'totalQuestions': 2,
+      'totalPoints': 150,
+      'timeLimit': 900, // 15 minutes in seconds
+      'category': 'Demo',
+      'isDemo': true,
+    },
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -29,18 +121,15 @@ class _ChallengesExamsScreenState extends State<ChallengesExamsScreen> {
 
   Future<void> _loadData() async {
     try {
-      // Get all quizzes
-      final allQuizzes = await _assessmentService.getAvailableQuizzes();
-
-      // Get completed assessments from provider
+      // Load user-specific data from provider
       final examProvider = Provider.of<ExamProvider>(context, listen: false);
-      await examProvider.loadUserResults(); // Ensure results are loaded
+      await examProvider.loadUserResults();
 
-      // Separate by type
+      // Separate static assessments by type
       setState(() {
-        _quizzes = allQuizzes.where((q) => q['type'] == 'quiz').toList();
-        _challenges = allQuizzes.where((q) => q['type'] == 'coding').toList();
-        _exams = allQuizzes.where((q) => q['type'] == 'exam').toList();
+        _quizzes = _staticAssessments.where((q) => q['type'] == 'quiz' && q['isDemo'] == false).toList();
+        _challenges = _staticAssessments.where((q) => q['type'] == 'coding' && q['isDemo'] == false).toList();
+        _exams = _staticAssessments.where((q) => q['type'] == 'exam' && q['isDemo'] == false).toList();
         _isLoading = false;
       });
     } catch (e) {
@@ -149,7 +238,7 @@ class _ChallengesExamsScreenState extends State<ChallengesExamsScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   _buildInfoChip(
-                    '${assessment['questionIds']?.length ?? assessment['totalQuestions'] ?? 0} Qs',
+                    '${assessment['totalQuestions'] ?? 0} Qs',
                     Icons.question_answer_outlined,
                   ),
                   _buildInfoChip(
@@ -183,6 +272,30 @@ class _ChallengesExamsScreenState extends State<ChallengesExamsScreen> {
                       ),
                     ),
                   ),
+                  const SizedBox(width: 8),
+                  if (assessment['isDemo'] == true)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: Colors.orange),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.science, size: 10, color: Colors.orange),
+                          SizedBox(width: 4),
+                          Text(
+                            'Demo',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.orange,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   const Spacer(),
                   if (isCompleted)
                     OutlinedButton(
@@ -216,9 +329,9 @@ class _ChallengesExamsScreenState extends State<ChallengesExamsScreen> {
                           vertical: 8,
                         ),
                       ),
-                      child: const Text(
-                        'Start',
-                        style: TextStyle(
+                      child: Text(
+                        assessment['isDemo'] == true ? 'Try Demo' : 'Start',
+                        style: const TextStyle(
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -309,6 +422,28 @@ class _ChallengesExamsScreenState extends State<ChallengesExamsScreen> {
                   ],
                 ),
               ),
+            if (assessment['isDemo'] == true)
+              Container(
+                padding: const EdgeInsets.all(8),
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.science, size: 16, color: Colors.orange),
+                    SizedBox(width: 8),
+                    Text(
+                      'This is a demo assessment for testing purposes',
+                      style: TextStyle(
+                        color: Colors.orange,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             Text(
               assessment['description'] ?? 'Test your knowledge and skills',
               style: TextStyle(color: Colors.grey.shade600),
@@ -316,9 +451,11 @@ class _ChallengesExamsScreenState extends State<ChallengesExamsScreen> {
             const SizedBox(height: 16),
             _buildDetailRow('Type', assessment['type'] ?? 'quiz'),
             _buildDetailRow('Difficulty', assessment['difficulty'] ?? 'Beginner'),
-            _buildDetailRow('Questions', '${assessment['questionIds']?.length ?? assessment['totalQuestions'] ?? 0}'),
+            _buildDetailRow('Questions', '${assessment['totalQuestions'] ?? 0}'),
             _buildDetailRow('Total Points', '${assessment['totalPoints'] ?? 100}'),
             _buildDetailRow('Time Limit', _formatTime(assessment['timeLimit'] ?? 0)),
+            if (assessment['category'] != null)
+              _buildDetailRow('Category', assessment['category']),
           ],
         ),
         actions: [
@@ -335,7 +472,7 @@ class _ChallengesExamsScreenState extends State<ChallengesExamsScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: _getSectionColor(assessment['type'] ?? 'quiz'),
               ),
-              child: const Text('Start Assessment'),
+              child: Text(assessment['isDemo'] == true ? 'Try Demo' : 'Start Assessment'),
             )
           else
             OutlinedButton(
@@ -385,27 +522,20 @@ class _ChallengesExamsScreenState extends State<ChallengesExamsScreen> {
   }
 
   void _startAssessment(Map<String, dynamic> assessment) {
-    // Get the assessment ID
-    final assessmentId = assessment['id'] ??
-        assessment['quizId'] ??
-        assessment['assessmentId'] ??
-        'demo_${DateTime.now().millisecondsSinceEpoch}';
-
-    // Navigate to TakeAssessmentScreen
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => TakeAssessmentScreen(
-          quizId: assessmentId,
+          quizId: assessment['id'] ?? 'demo_${DateTime.now().millisecondsSinceEpoch}',
           quizName: assessment['name'] ?? 'Assessment',
           quizType: assessment['type'] ?? 'quiz',
           difficulty: assessment['difficulty'] ?? 'Beginner',
           totalDuration: assessment['timeLimit'] != null
               ? (assessment['timeLimit'] ~/ 60) // Convert seconds to minutes
               : null,
-          totalQuestions: assessment['questionIds']?.length ??
-              assessment['totalQuestions'] ?? 0,
+          totalQuestions: assessment['totalQuestions'] ?? 0,
           totalPoints: assessment['totalPoints'] ?? 100,
+          isDemo: assessment['isDemo'] == true,
         ),
       ),
     ).then((_) {
@@ -422,7 +552,7 @@ class _ChallengesExamsScreenState extends State<ChallengesExamsScreen> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => ResultDetailsScreen(result: result), // FIXED: Pass QuizResult object
+          builder: (context) => ResultDetailsScreen(result: result, userName: '', userEmail: '',),
         ),
       );
     } else {
@@ -449,6 +579,9 @@ class _ChallengesExamsScreenState extends State<ChallengesExamsScreen> {
     final examProvider = Provider.of<ExamProvider>(context);
     final completedCount = examProvider.getCompletedCount();
     final averageScore = examProvider.getAverageScore();
+
+    // Count only non-demo assessments
+    final totalAssessmentsCount = _staticAssessments.where((a) => a['isDemo'] == false).length;
 
     return Scaffold(
       appBar: AppBar(
@@ -495,7 +628,7 @@ class _ChallengesExamsScreenState extends State<ChallengesExamsScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _buildStatItem(_quizzes.length + _challenges.length + _exams.length, 'Total'),
+                  _buildStatItem(totalAssessmentsCount, 'Total'),
                   _buildStatItem(completedCount, 'Completed'),
                   _buildStatItem(
                     averageScore.toInt(),
@@ -556,9 +689,8 @@ class _ChallengesExamsScreenState extends State<ChallengesExamsScreen> {
               ),
             ],
 
-            // Empty State - Show demo quizzes if no data
-            if (_quizzes.isEmpty && _challenges.isEmpty && _exams.isEmpty)
-              _buildEmptyState(),
+            // Demo Quizzes Section (always shown)
+            _buildDemoSection(),
 
             const SizedBox(height: 32),
           ],
@@ -615,205 +747,26 @@ class _ChallengesExamsScreenState extends State<ChallengesExamsScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const SizedBox(height: 50),
-          Icon(
-            Icons.quiz_outlined,
-            size: 80,
-            color: Colors.grey.shade300,
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'No assessments available',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Try demo quizzes below',
-            style: TextStyle(
-              color: Colors.grey.shade600,
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Demo quizzes
-          _buildDemoSection(),
-        ],
-      ),
-    );
-  }
-
   Widget _buildDemoSection() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Demo Quizzes',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Try these demo quizzes to test the feature',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
-              ),
-            ),
-            const SizedBox(height: 16),
+    final demoAssessments = _staticAssessments.where((a) => a['isDemo'] == true).toList();
 
-            // Demo Quizzes List
-            _buildDemoQuizCard(
-              'Programming Basics Quiz',
-              'Test your programming fundamentals knowledge',
-              3,
-              100,
-              10,
-              'Beginner',
-              'demo_quiz_1',
-              Colors.blue,
-            ),
-
-            const SizedBox(height: 12),
-
-            _buildDemoQuizCard(
-              'Dart Coding Challenge',
-              'Practice your Dart programming skills',
-              2,
-              150,
-              15,
-              'Intermediate',
-              'demo_quiz_2',
-              Colors.green,
-            ),
-
-            const SizedBox(height: 12),
-
-            _buildDemoQuizCard(
-              'Flutter Mock Exam',
-              'Full-length Flutter certification practice test',
-              4,
-              200,
-              60,
-              'Advanced',
-              'demo_quiz_3',
-              Colors.purple,
-            ),
-          ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 24),
+        _buildSectionHeader(
+          'Demo Quizzes',
+          'Try these demo quizzes to test the feature',
+          Colors.orange,
         ),
-      ),
-    );
-  }
-
-  Widget _buildDemoQuizCard(
-      String title,
-      String description,
-      int questions,
-      int points,
-      int duration,
-      String difficulty,
-      String quizId,
-      Color color,
-      ) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: color.withOpacity(0.2)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: color,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              description,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey.shade600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                _buildInfoChip('$questions Qs', Icons.question_answer_outlined),
-                const SizedBox(width: 8),
-                _buildInfoChip('$points pts', Icons.star_border_outlined),
-                const SizedBox(width: 8),
-                _buildInfoChip('${duration}m', Icons.timer_outlined),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: _getDifficultyColor(difficulty),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    difficulty,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      color: Colors.white,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    _startAssessment({
-                      'id': quizId,
-                      'name': title,
-                      'description': description,
-                      'type': 'quiz',
-                      'totalQuestions': questions,
-                      'totalPoints': points,
-                      'timeLimit': duration * 60, // Convert to seconds
-                      'difficulty': difficulty,
-                    });
-                  },
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    backgroundColor: color,
-                  ),
-                  child: const Text(
-                    'Try Demo',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                ),
-              ],
-            ),
-          ],
+        ListView.separated(
+          physics: const NeverScrollableScrollPhysics(),
+          shrinkWrap: true,
+          itemCount: demoAssessments.length,
+          separatorBuilder: (context, index) => const SizedBox(height: 12),
+          itemBuilder: (context, index) => _buildAssessmentCard(demoAssessments[index], Colors.orange),
         ),
-      ),
+      ],
     );
   }
 }

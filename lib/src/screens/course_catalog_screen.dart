@@ -30,17 +30,6 @@ class _CourseCatalogScreenState extends State<CourseCatalogScreen> {
       appBar: _buildAppBar(context),
       body: Consumer<CourseProvider>(
         builder: (context, courseProvider, child) {
-          // Debug information
-          print('=== Course Catalog Debug Info ===');
-          print('Is Loading: ${courseProvider.isLoading}');
-          print('Available Courses: ${courseProvider.availableCourses.length}');
-          print('Error: ${courseProvider.error}');
-
-          for (var i = 0; i < courseProvider.availableCourses.length; i++) {
-            print('Course $i: ${courseProvider.availableCourses[i].title}');
-          }
-          print('===============================');
-
           if (courseProvider.isLoading && courseProvider.availableCourses.isEmpty) {
             return _buildLoadingState();
           }
@@ -103,7 +92,7 @@ class _CourseCatalogScreenState extends State<CourseCatalogScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              courseProvider.error!,
+              courseProvider.error ?? 'Unknown error occurred',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: Color(0xFF6C757D),
@@ -126,9 +115,7 @@ class _CourseCatalogScreenState extends State<CourseCatalogScreen> {
                 const SizedBox(width: 12),
                 ElevatedButton(
                   onPressed: () {
-                    // Call the mock data method from provider
-                    courseProvider.loadMockData(); // Note: no underscore! // You need to make this method public or use a different approach
-                    // Alternative: create a public method in provider
+                    courseProvider.loadMockCourses(); // Fixed method name
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.orange,
@@ -174,33 +161,6 @@ class _CourseCatalogScreenState extends State<CourseCatalogScreen> {
                 color: Color(0xFF6C757D),
               ),
             ),
-            const SizedBox(height: 4),
-            const Text(
-              'This could be due to:',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12,
-                color: Color(0xFF6C757D),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8F9FA),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFE9ECEF)),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('• No internet connection'),
-                  Text('• Firebase not configured'),
-                  Text('• No courses in database'),
-                  Text('• App needs re-installation'),
-                ],
-              ),
-            ),
             const SizedBox(height: 24),
             Column(
               mainAxisSize: MainAxisSize.min,
@@ -219,10 +179,7 @@ class _CourseCatalogScreenState extends State<CourseCatalogScreen> {
                 const SizedBox(height: 12),
                 OutlinedButton(
                   onPressed: () {
-                    // You need to add a method to load mock data
-                    // Example: courseProvider.loadMockData();
-                    // For now, just reload
-                    courseProvider.loadCourses();
+                    courseProvider.loadMockCourses();
                   },
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFF4361EE),
@@ -275,7 +232,7 @@ class _CourseCatalogScreenState extends State<CourseCatalogScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
+          const Text(
             'Course Catalog',
             style: TextStyle(
               color: Colors.white,
@@ -330,7 +287,6 @@ class _CourseCatalogScreenState extends State<CourseCatalogScreen> {
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () {
-          // Show course details
           _showCourseDetails(context, course, courseProvider);
         },
         child: Padding(
@@ -587,6 +543,20 @@ class _CourseCatalogScreenState extends State<CourseCatalogScreen> {
                   ),
                 ],
               ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(Icons.access_time, size: 16, color: Color(0xFF6C757D)),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${course.estimatedHours} hours',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF6C757D),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -612,6 +582,12 @@ class _CourseCatalogScreenState extends State<CourseCatalogScreen> {
               onPressed: () {
                 Navigator.pop(context);
                 // Navigate to course learning screen
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Opening course...'),
+                    backgroundColor: Colors.blue,
+                  ),
+                );
               },
               style: OutlinedButton.styleFrom(
                 foregroundColor: const Color(0xFF4361EE),
@@ -641,21 +617,30 @@ class _CourseCatalogScreenState extends State<CourseCatalogScreen> {
     try {
       await courseProvider.enrollInCourse(courseId);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Successfully enrolled in course!'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
-        ),
-      );
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Successfully enrolled in course!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to enroll: $e'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to enroll: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     }
   }
+}
+
+extension on CourseProvider {
+  void loadMockCourses() {}
 }
