@@ -14,6 +14,21 @@ class FirebaseTimetableService {
   static const String usersCollection = 'users';
   static const String coursesCollection = 'courses';
 
+  // Helper method to check and create indexes
+  Future<void> _handleIndexError(Function() queryFunction, String queryName) async {
+    try {
+      return await queryFunction();
+    } catch (e) {
+      if (e.toString().contains('requires an index')) {
+        print('⚠️ Index required for $queryName query');
+        print('ℹ️ Check Firebase Console for index creation link');
+        // Try a simpler fallback query
+        throw Exception('Index needed. Please wait a few minutes for it to build.');
+      }
+      rethrow;
+    }
+  }
+
   // CRUD Operations for Timetable Slots
 
   /// Get all timetable slots for the current user
@@ -25,13 +40,26 @@ class FirebaseTimetableService {
       final querySnapshot = await _firestore
           .collection(timetableCollection)
           .where('userId', isEqualTo: userId)
-          .orderBy('date', descending: false)
-          .orderBy('startTime')
           .get();
 
-      return querySnapshot.docs
+      final slots = querySnapshot.docs
           .map((doc) => TimetableSlot.fromFirestore(doc))
           .toList();
+
+      // Sort manually
+      slots.sort((a, b) {
+        final aDateTime = DateTime(
+            a.date.year, a.date.month, a.date.day,
+            a.startTime.hour, a.startTime.minute
+        );
+        final bDateTime = DateTime(
+            b.date.year, b.date.month, b.date.day,
+            b.startTime.hour, b.startTime.minute
+        );
+        return aDateTime.compareTo(bDateTime);
+      });
+
+      return slots;
     } catch (e) {
       print('Error getting timetable slots: $e');
       rethrow;
@@ -50,15 +78,30 @@ class FirebaseTimetableService {
       final querySnapshot = await _firestore
           .collection(timetableCollection)
           .where('userId', isEqualTo: userId)
-          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
-          .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endDate))
-          .orderBy('date')
-          .orderBy('startTime')
           .get();
 
-      return querySnapshot.docs
+      // Filter manually in Dart
+      final slots = querySnapshot.docs
           .map((doc) => TimetableSlot.fromFirestore(doc))
+          .where((slot) =>
+      slot.date.isAfter(startDate.subtract(const Duration(days: 1))) &&
+          slot.date.isBefore(endDate.add(const Duration(days: 1))))
           .toList();
+
+      // Sort manually
+      slots.sort((a, b) {
+        final aDateTime = DateTime(
+            a.date.year, a.date.month, a.date.day,
+            a.startTime.hour, a.startTime.minute
+        );
+        final bDateTime = DateTime(
+            b.date.year, b.date.month, b.date.day,
+            b.startTime.hour, b.startTime.minute
+        );
+        return aDateTime.compareTo(bDateTime);
+      });
+
+      return slots;
     } catch (e) {
       print('Error getting slots in range: $e');
       rethrow;
@@ -291,14 +334,35 @@ class FirebaseTimetableService {
       return const Stream.empty();
     }
 
-    return _firestore
-        .collection(timetableCollection)
-        .where('userId', isEqualTo: userId)
-        .orderBy('date')
-        .orderBy('startTime')
-        .snapshots()
-        .map((snapshot) =>
-        snapshot.docs.map((doc) => TimetableSlot.fromFirestore(doc)).toList());
+    try {
+      return _firestore
+          .collection(timetableCollection)
+          .where('userId', isEqualTo: userId)
+          .snapshots()
+          .map((snapshot) {
+        final slots = snapshot.docs
+            .map((doc) => TimetableSlot.fromFirestore(doc))
+            .toList();
+
+        // Sort manually
+        slots.sort((a, b) {
+          final aDateTime = DateTime(
+              a.date.year, a.date.month, a.date.day,
+              a.startTime.hour, a.startTime.minute
+          );
+          final bDateTime = DateTime(
+              b.date.year, b.date.month, b.date.day,
+              b.startTime.hour, b.startTime.minute
+          );
+          return aDateTime.compareTo(bDateTime);
+        });
+
+        return slots;
+      });
+    } catch (e) {
+      print('Stream error (falling back to empty): $e');
+      return const Stream.empty();
+    }
   }
 
   /// Stream today's slots for real-time updates
@@ -310,18 +374,29 @@ class FirebaseTimetableService {
 
     final now = DateTime.now();
     final startOfDay = DateTime(now.year, now.month, now.day);
-    final endOfDay = startOfDay.add(const Duration(days: 1));
 
     return _firestore
         .collection(timetableCollection)
         .where('userId', isEqualTo: userId)
-        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
-        .where('date', isLessThan: Timestamp.fromDate(endOfDay))
-        .orderBy('date')
-        .orderBy('startTime')
         .snapshots()
-        .map((snapshot) =>
-        snapshot.docs.map((doc) => TimetableSlot.fromFirestore(doc)).toList());
+        .map((snapshot) {
+      final slots = snapshot.docs
+          .map((doc) => TimetableSlot.fromFirestore(doc))
+          .where((slot) =>
+      slot.date.year == startOfDay.year &&
+          slot.date.month == startOfDay.month &&
+          slot.date.day == startOfDay.day)
+          .toList();
+
+      // Sort manually
+      slots.sort((a, b) {
+        final aTime = a.startTime.hour * 60 + a.startTime.minute;
+        final bTime = b.startTime.hour * 60 + b.startTime.minute;
+        return aTime.compareTo(bTime);
+      });
+
+      return slots;
+    });
   }
 
   /// Stream upcoming slots for real-time updates
@@ -337,13 +412,30 @@ class FirebaseTimetableService {
     return _firestore
         .collection(timetableCollection)
         .where('userId', isEqualTo: userId)
-        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(now))
-        .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endDate))
-        .orderBy('date')
-        .orderBy('startTime')
         .snapshots()
-        .map((snapshot) =>
-        snapshot.docs.map((doc) => TimetableSlot.fromFirestore(doc)).toList());
+        .map((snapshot) {
+      final slots = snapshot.docs
+          .map((doc) => TimetableSlot.fromFirestore(doc))
+          .where((slot) =>
+      slot.date.isAfter(now.subtract(const Duration(hours: 1))) &&
+          slot.date.isBefore(endDate))
+          .toList();
+
+      // Sort manually
+      slots.sort((a, b) {
+        final aDateTime = DateTime(
+            a.date.year, a.date.month, a.date.day,
+            a.startTime.hour, a.startTime.minute
+        );
+        final bDateTime = DateTime(
+            b.date.year, b.date.month, b.date.day,
+            b.startTime.hour, b.startTime.minute
+        );
+        return aDateTime.compareTo(bDateTime);
+      });
+
+      return slots;
+    });
   }
 
   /// Check for slot conflicts
@@ -360,11 +452,17 @@ class FirebaseTimetableService {
       final querySnapshot = await _firestore
           .collection(timetableCollection)
           .where('userId', isEqualTo: userId)
-          .where('date', isEqualTo: Timestamp.fromDate(date))
           .get();
 
       for (var doc in querySnapshot.docs) {
         final slot = TimetableSlot.fromFirestore(doc);
+
+        // Skip if not same date
+        if (slot.date.year != date.year ||
+            slot.date.month != date.month ||
+            slot.date.day != date.day) {
+          continue;
+        }
 
         // Skip the slot we're editing
         if (excludeSlotId != null && slot.id == excludeSlotId) continue;
@@ -464,14 +562,27 @@ class FirebaseTimetableService {
       final querySnapshot = await _firestore
           .collection(timetableCollection)
           .where('userId', isEqualTo: userId)
-          .where('courseId', isEqualTo: courseId)
-          .orderBy('date')
-          .orderBy('startTime')
           .get();
 
-      return querySnapshot.docs
+      final slots = querySnapshot.docs
           .map((doc) => TimetableSlot.fromFirestore(doc))
+          .where((slot) => slot.courseId == courseId)
           .toList();
+
+      // Sort manually
+      slots.sort((a, b) {
+        final aDateTime = DateTime(
+            a.date.year, a.date.month, a.date.day,
+            a.startTime.hour, a.startTime.minute
+        );
+        final bDateTime = DateTime(
+            b.date.year, b.date.month, b.date.day,
+            b.startTime.hour, b.startTime.minute
+        );
+        return aDateTime.compareTo(bDateTime);
+      });
+
+      return slots;
     } catch (e) {
       print('Error getting slots by course: $e');
       rethrow;
@@ -484,20 +595,24 @@ class FirebaseTimetableService {
       final userId = _auth.currentUser?.uid;
       if (userId == null) throw Exception('User not logged in');
 
-      Query query = _firestore
+      final querySnapshot = await _firestore
           .collection(timetableCollection)
           .where('userId', isEqualTo: userId)
-          .where('isCompleted', isEqualTo: true);
+          .get();
 
+      var slots = querySnapshot.docs
+          .map((doc) => TimetableSlot.fromFirestore(doc))
+          .where((slot) => slot.isCompleted);
+
+      // Apply date filters if provided
       if (startDate != null) {
-        query = query.where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate));
+        slots = slots.where((slot) => slot.date.isAfter(startDate.subtract(const Duration(days: 1))));
       }
       if (endDate != null) {
-        query = query.where('date', isLessThanOrEqualTo: Timestamp.fromDate(endDate));
+        slots = slots.where((slot) => slot.date.isBefore(endDate.add(const Duration(days: 1))));
       }
 
-      final querySnapshot = await query.get();
-      return querySnapshot.docs.length;
+      return slots.length;
     } catch (e) {
       print('Error getting completed slots count: $e');
       rethrow;
@@ -513,15 +628,39 @@ class FirebaseTimetableService {
       final querySnapshot = await _firestore
           .collection(timetableCollection)
           .where('userId', isEqualTo: userId)
-          .where('isRecurring', isEqualTo: true)
           .get();
 
       return querySnapshot.docs
           .map((doc) => TimetableSlot.fromFirestore(doc))
+          .where((slot) => slot.isRecurring)
           .toList();
     } catch (e) {
       print('Error getting recurring slots: $e');
       rethrow;
+    }
+  }
+
+  /// Test index creation
+  Future<void> testIndexQuery() async {
+    try {
+      final userId = _auth.currentUser?.uid;
+      if (userId == null) return;
+
+      // This will trigger index creation if needed
+      await _firestore
+          .collection(timetableCollection)
+          .where('userId', isEqualTo: userId)
+          .orderBy('date')
+          .orderBy('startTime')
+          .limit(1)
+          .get();
+
+      print('✅ Index query successful');
+    } catch (e) {
+      print('⚠️ Index test failed: $e');
+      if (e.toString().contains('requires an index')) {
+        print('🔗 Please create the index in Firebase Console');
+      }
     }
   }
 
@@ -569,44 +708,6 @@ class FirebaseTimetableService {
       case 7: return 'Sunday';
       default: return '';
     }
-  }
-
-  // Extension for copyWith method (optional, can also be in timetable_provider)
-  static TimetableSlot copyTimetableSlot({
-    required TimetableSlot original,
-    String? id,
-    String? userId,
-    DateTime? date,
-    TimeOfDay? startTime,
-    TimeOfDay? endTime,
-    String? title,
-    String? description,
-    String? courseId,
-    String? colorHex,
-    bool? isCompleted,
-    bool? isRecurring,
-    List<int>? recurringDays,
-    DateTime? recurringEndDate,
-    DateTime? createdAt,
-    DateTime? updatedAt,
-  }) {
-    return TimetableSlot(
-      id: id ?? original.id,
-      userId: userId ?? original.userId,
-      date: date ?? original.date,
-      startTime: startTime ?? original.startTime,
-      endTime: endTime ?? original.endTime,
-      title: title ?? original.title,
-      description: description ?? original.description,
-      courseId: courseId ?? original.courseId,
-      colorHex: colorHex ?? original.colorHex,
-      isCompleted: isCompleted ?? original.isCompleted,
-      isRecurring: isRecurring ?? original.isRecurring,
-      recurringDays: recurringDays ?? original.recurringDays,
-      recurringEndDate: recurringEndDate ?? original.recurringEndDate,
-      createdAt: createdAt ?? original.createdAt,
-      updatedAt: updatedAt ?? DateTime.now(),
-    );
   }
 }
 

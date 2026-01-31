@@ -1,22 +1,93 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../services/firebase_timetable_service.dart';
 import '../models/timetable_model.dart';
 
 class TimetableProvider with ChangeNotifier {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseTimetableService _timetableService = firebaseTimetableService;
 
   List<TimetableSlot> _timetableSlots = [];
   bool _isLoading = false;
   String? _error;
+  User? _currentUser;
+  StreamSubscription<List<TimetableSlot>>? _timetableSubscription;
+  StreamSubscription<User?>? _authStateSubscription;
 
   List<TimetableSlot> get timetableSlots => _timetableSlots;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  User? get currentUser => _currentUser;
+
+  TimetableProvider() {
+    // Listen to auth state changes
+    _authStateSubscription = _auth.authStateChanges().listen((user) {
+      initializeWithUser(user);
+    });
+
+    // Initialize with current user if already logged in
+    initializeWithUser(_auth.currentUser);
+  }
+
+  // Initialize provider with user
+  void initializeWithUser(User? user) {
+    print('TimetableProvider: User changed to ${user?.uid ?? 'null'}');
+
+    // Clear any existing subscription
+    _timetableSubscription?.cancel();
+
+    _currentUser = user;
+
+    if (user != null) {
+      _error = null;
+      _setupRealtimeUpdates();
+      loadTimetableSlots();
+    } else {
+      _clearData();
+    }
+
+    notifyListeners();
+  }
+
+  // Set up real-time updates
+  void _setupRealtimeUpdates() {
+    if (_currentUser == null) {
+      _error = 'User not logged in';
+      notifyListeners();
+      return;
+    }
+
+    try {
+      _timetableSubscription = _timetableService.streamUserTimetableSlots().listen(
+            (slots) {
+          print('TimetableProvider: Received ${slots.length} slots from stream');
+          _timetableSlots = slots;
+          _generateRecurringSlots(); // Regenerate recurring slots
+          _error = null;
+          notifyListeners();
+        },
+        onError: (error) {
+          print('TimetableProvider: Stream error: $error');
+          _error = error.toString();
+          notifyListeners();
+        },
+        cancelOnError: true,
+      );
+    } catch (e) {
+      print('TimetableProvider: Error setting up stream: $e');
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
 
   // Get slots for a specific date
   List<TimetableSlot> getSlotsForDate(DateTime date) {
+    if (_currentUser == null) {
+      return [];
+    }
+
     return _timetableSlots.where((slot) {
       return slot.date.year == date.year &&
           slot.date.month == date.month &&
@@ -26,12 +97,20 @@ class TimetableProvider with ChangeNotifier {
 
   // Get today's slots
   List<TimetableSlot> getTodaySlots() {
+    if (_currentUser == null) {
+      return [];
+    }
+
     final today = DateTime.now();
     return getSlotsForDate(today);
   }
 
   // Get upcoming slots (from now onwards)
   List<TimetableSlot> getUpcomingSlots() {
+    if (_currentUser == null) {
+      return [];
+    }
+
     final now = DateTime.now();
     return _timetableSlots.where((slot) {
       final slotDateTime = DateTime(
@@ -45,30 +124,32 @@ class TimetableProvider with ChangeNotifier {
   // Load all timetable slots for current user
   Future<void> loadTimetableSlots() async {
     try {
+      if (_currentUser == null) {
+        print('TimetableProvider: Cannot load slots - user is null');
+        _error = 'User not logged in';
+        notifyListeners();
+        return;
+      }
+
       _isLoading = true;
       _error = null;
       notifyListeners();
 
-      final userId = _auth.currentUser?.uid;
-      if (userId == null) throw Exception('User not logged in');
+      print('TimetableProvider: Loading slots for user ${_currentUser!.uid}');
 
-      final querySnapshot = await _firestore
-          .collection('timetable_slots')
-          .where('userId', isEqualTo: userId)
-          .orderBy('date')
-          .orderBy('startTime')
-          .get();
+      // Load from service
+      _timetableSlots = await _timetableService.getUserTimetableSlots();
 
-      _timetableSlots = querySnapshot.docs
-          .map((doc) => TimetableSlot.fromFirestore(doc))
-          .toList();
+      print('TimetableProvider: Loaded ${_timetableSlots.length} slots');
 
       // Generate recurring slots for the next 30 days
       _generateRecurringSlots();
 
       _isLoading = false;
+      _error = null;
       notifyListeners();
     } catch (e) {
+      print('TimetableProvider: Error loading slots: $e');
       _isLoading = false;
       _error = e.toString();
       notifyListeners();
@@ -78,9 +159,16 @@ class TimetableProvider with ChangeNotifier {
 
   // Generate recurring slots for the next 30 days
   void _generateRecurringSlots() {
-    final recurringSlots = _timetableSlots.where((slot) => slot.isRecurring);
+    if (_currentUser == null) return;
+
+    final recurringSlots = _timetableSlots.where((slot) => slot.isRecurring).toList();
+    if (recurringSlots.isEmpty) return;
+
     final now = DateTime.now();
     final endDate = now.add(const Duration(days: 30));
+
+    // Remove previously generated recurring slots
+    _timetableSlots.removeWhere((slot) => slot.id.contains('_generated_'));
 
     for (var slot in recurringSlots) {
       for (var day in slot.recurringDays) {
@@ -99,7 +187,7 @@ class TimetableProvider with ChangeNotifier {
               currentDate.isBefore(slot.recurringEndDate!))) {
 
             final generatedSlot = TimetableSlot(
-              id: '${slot.id}_${currentDate.toIso8601String()}',
+              id: '${slot.id}_generated_${currentDate.toIso8601String()}',
               userId: slot.userId,
               date: currentDate,
               startTime: slot.startTime,
@@ -146,27 +234,17 @@ class TimetableProvider with ChangeNotifier {
   // Add a new timetable slot
   Future<void> addTimetableSlot(TimetableSlot slot) async {
     try {
+      if (_currentUser == null) {
+        throw Exception('User not logged in');
+      }
+
       _isLoading = true;
+      _error = null;
       notifyListeners();
 
-      final userId = _auth.currentUser?.uid;
-      if (userId == null) throw Exception('User not logged in');
+      await _timetableService.addTimetableSlot(slot);
 
-      // Generate a unique ID for the slot
-      final docRef = _firestore.collection('timetable_slots').doc();
-
-      final newSlot = slot.copyWith(
-        id: docRef.id,
-        userId: userId,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
-
-      await docRef.set(newSlot.toFirestore());
-
-      _timetableSlots.add(newSlot);
-      _generateRecurringSlots();
-
+      // The real-time stream will update the list automatically
       _isLoading = false;
       notifyListeners();
     } catch (e) {
@@ -180,20 +258,17 @@ class TimetableProvider with ChangeNotifier {
   // Update a timetable slot
   Future<void> updateTimetableSlot(TimetableSlot updatedSlot) async {
     try {
-      _isLoading = true;
-      notifyListeners();
-
-      await _firestore
-          .collection('timetable_slots')
-          .doc(updatedSlot.id)
-          .update(updatedSlot.toFirestore());
-
-      final index = _timetableSlots.indexWhere((slot) => slot.id == updatedSlot.id);
-      if (index != -1) {
-        _timetableSlots[index] = updatedSlot;
-        _generateRecurringSlots();
+      if (_currentUser == null) {
+        throw Exception('User not logged in');
       }
 
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      await _timetableService.updateTimetableSlot(updatedSlot);
+
+      // The real-time stream will update the list automatically
       _isLoading = false;
       notifyListeners();
     } catch (e) {
@@ -207,10 +282,11 @@ class TimetableProvider with ChangeNotifier {
   // Mark slot as completed/incomplete
   Future<void> toggleSlotCompletion(String slotId, bool isCompleted) async {
     try {
-      final slot = _timetableSlots.firstWhere((s) => s.id == slotId);
-      final updatedSlot = slot.copyWith(isCompleted: isCompleted);
+      if (_currentUser == null) {
+        throw Exception('User not logged in');
+      }
 
-      await updateTimetableSlot(updatedSlot);
+      await _timetableService.toggleSlotCompletion(slotId, isCompleted);
     } catch (e) {
       rethrow;
     }
@@ -219,16 +295,39 @@ class TimetableProvider with ChangeNotifier {
   // Delete a timetable slot
   Future<void> deleteTimetableSlot(String slotId) async {
     try {
+      if (_currentUser == null) {
+        throw Exception('User not logged in');
+      }
+
       _isLoading = true;
+      _error = null;
       notifyListeners();
 
-      await _firestore
-          .collection('timetable_slots')
-          .doc(slotId)
-          .delete();
+      await _timetableService.deleteTimetableSlot(slotId);
 
-      _timetableSlots.removeWhere((slot) => slot.id == slotId);
-      _generateRecurringSlots();
+      // The real-time stream will update the list automatically
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _isLoading = false;
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  // Bulk add slots (for AI suggestions)
+  Future<void> bulkAddTimetableSlots(List<TimetableSlot> slots) async {
+    try {
+      if (_currentUser == null) {
+        throw Exception('User not logged in');
+      }
+
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      await _timetableService.bulkAddTimetableSlots(slots);
 
       _isLoading = false;
       notifyListeners();
@@ -241,36 +340,124 @@ class TimetableProvider with ChangeNotifier {
   }
 
   // Get timetable statistics
-  TimetableStats getStats() {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final weekAgo = today.subtract(const Duration(days: 7));
+  Future<TimetableStats> getStats({int daysBack = 30}) async {
+    try {
+      if (_currentUser == null) {
+        throw Exception('User not logged in');
+      }
 
-    final recentSlots = _timetableSlots.where((slot) =>
-    slot.date.isAfter(weekAgo) && slot.date.isBefore(today.add(const Duration(days: 1))));
+      return await _timetableService.getTimetableStats(daysBack: daysBack);
+    } catch (e) {
+      rethrow;
+    }
+  }
 
-    double totalMinutes = 0;
-    final studyTimeByDay = <String, int>{};
-    int completedCount = 0;
-
-    for (var slot in recentSlots) {
-      final dayName = _getDayName(slot.date.weekday);
-      final durationMinutes = slot.duration.inMinutes;
-
-      totalMinutes += durationMinutes;
-      studyTimeByDay[dayName] = (studyTimeByDay[dayName] ?? 0) + durationMinutes;
-
-      if (slot.isCompleted) completedCount++;
+  // Check for slot conflicts
+  Future<bool> hasSlotConflict(
+      DateTime date,
+      TimeOfDay startTime,
+      TimeOfDay endTime, {
+        String? excludeSlotId,
+      }) async {
+    if (_currentUser == null) {
+      throw Exception('User not logged in');
     }
 
-    return TimetableStats(
-      totalSlots: _timetableSlots.length,
-      completedSlots: completedCount,
-      upcomingSlots: getUpcomingSlots().length,
-      totalStudyHours: totalMinutes / 60,
-      averageStudyTimePerDay: totalMinutes / 7 / 60, // Average per day over last 7 days
-      studyTimeByDay: studyTimeByDay,
+    return await _timetableService.hasSlotConflict(
+      date,
+      startTime,
+      endTime,
+      excludeSlotId: excludeSlotId,
     );
+  }
+
+  // Get slots by course ID
+  Future<List<TimetableSlot>> getSlotsByCourse(String courseId) async {
+    try {
+      if (_currentUser == null) {
+        throw Exception('User not logged in');
+      }
+
+      return await _timetableService.getSlotsByCourse(courseId);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // Get completed slots count
+  Future<int> getCompletedSlotsCount({DateTime? startDate, DateTime? endDate}) async {
+    if (_currentUser == null) {
+      throw Exception('User not logged in');
+    }
+
+    return await _timetableService.getCompletedSlotsCount(
+      startDate: startDate,
+      endDate: endDate,
+    );
+  }
+
+  // Get recurring slots
+  Future<List<TimetableSlot>> getRecurringSlots() async {
+    if (_currentUser == null) {
+      throw Exception('User not logged in');
+    }
+
+    return await _timetableService.getRecurringSlots();
+  }
+
+  // Clear all user timetable data
+  Future<void> clearUserTimetable() async {
+    try {
+      if (_currentUser == null) {
+        throw Exception('User not logged in');
+      }
+
+      await _timetableService.clearUserTimetable();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // AI-generated timetable suggestions based on enrolled courses
+  Future<List<TimetableSlot>> generateAISuggestions({
+    required List<String> courseIds,
+    required int preferredStudyHoursPerDay,
+    required List<int> preferredDays,
+    required TimeOfDay preferredStartTime,
+    int weeks = 4,
+  }) async {
+    try {
+      if (_currentUser == null) {
+        throw Exception('User not logged in');
+      }
+
+      return await _timetableService.generateAISuggestions(
+        courseIds: courseIds,
+        preferredStudyHoursPerDay: preferredStudyHoursPerDay,
+        preferredDays: preferredDays,
+        preferredStartTime: preferredStartTime,
+        weeks: weeks,
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // Clear all data
+  void _clearData() {
+    print('TimetableProvider: Clearing all data');
+    _timetableSlots.clear();
+    _isLoading = false;
+    _error = null;
+    notifyListeners();
+  }
+
+  // Clean up resources
+  void disposeProvider() {
+    print('TimetableProvider: Disposing provider');
+    _timetableSubscription?.cancel();
+    _authStateSubscription?.cancel();
+    _clearData();
   }
 
   String _getDayName(int weekday) {
@@ -284,49 +471,6 @@ class TimetableProvider with ChangeNotifier {
       case 7: return 'Sun';
       default: return '';
     }
-  }
-
-  // AI-generated timetable suggestions based on enrolled courses
-  Future<List<TimetableSlot>> generateAISuggestions({
-    required List<String> courseIds,
-    required int preferredStudyHoursPerDay,
-    required List<int> preferredDays,
-    required TimeOfDay preferredStartTime,
-    int weeks = 4,
-  }) async {
-    // This is a simplified version - you can integrate with actual AI service
-    final suggestions = <TimetableSlot>[];
-    final now = DateTime.now();
-
-    for (int week = 0; week < weeks; week++) {
-      for (var day in preferredDays) {
-        final date = now.add(Duration(days: (week * 7) + day - 1));
-
-        final slot = TimetableSlot(
-          id: 'ai_suggestion_${date.toIso8601String()}',
-          userId: _auth.currentUser?.uid ?? '',
-          date: date,
-          startTime: preferredStartTime,
-          endTime: TimeOfDay(
-            hour: preferredStartTime.hour + preferredStudyHoursPerDay,
-            minute: preferredStartTime.minute,
-          ),
-          title: 'Study Session',
-          description: 'AI-suggested study time',
-          colorHex: '#4CAF50',
-          isCompleted: false,
-          isRecurring: true,
-          recurringDays: preferredDays,
-          recurringEndDate: now.add(Duration(days: weeks * 7)),
-          createdAt: now,
-          updatedAt: now,
-        );
-
-        suggestions.add(slot);
-      }
-    }
-
-    return suggestions;
   }
 }
 

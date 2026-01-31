@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../providers/timetable_provider.dart';
 import '../providers/course_provider.dart';
+import '../providers/auth_provider.dart';
 import '../models/timetable_model.dart';
 import '../components/timetable_slot_card.dart';
 
@@ -18,19 +19,40 @@ class _SmartTimetableScreenState extends State<SmartTimetableScreen> {
   DateTime? _selectedDay;
   CalendarFormat _calendarFormat = CalendarFormat.week;
   List<TimetableSlot> _selectedSlots = [];
+  bool _initialLoad = true;
 
   @override
   void initState() {
     super.initState();
     _focusedDay = DateTime.now();
     _selectedDay = DateTime.now();
-    _loadTimetable();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final timetableProvider = Provider.of<TimetableProvider>(context, listen: false);
+
+    if (authProvider.currentUser != null && _initialLoad) {
+      _loadTimetable();
+      _initialLoad = false;
+    }
   }
 
   Future<void> _loadTimetable() async {
-    await Provider.of<TimetableProvider>(context, listen: false)
-        .loadTimetableSlots();
-    _updateSelectedSlots();
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (authProvider.currentUser == null) {
+        return;
+      }
+
+      await Provider.of<TimetableProvider>(context, listen: false)
+          .loadTimetableSlots();
+      _updateSelectedSlots();
+    } catch (e) {
+      print('Error loading timetable: $e');
+    }
   }
 
   void _updateSelectedSlots() {
@@ -43,6 +65,13 @@ class _SmartTimetableScreenState extends State<SmartTimetableScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+    final timetableProvider = Provider.of<TimetableProvider>(context);
+
+    if (authProvider.currentUser == null) {
+      return _buildUnauthenticatedView();
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Smart Timetable'),
@@ -62,161 +91,23 @@ class _SmartTimetableScreenState extends State<SmartTimetableScreen> {
             icon: const Icon(Icons.analytics),
             onPressed: () => _showStatistics(context),
           ),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => _loadTimetable(),
+          ),
         ],
       ),
       body: Consumer<TimetableProvider>(
         builder: (context, timetableProvider, child) {
-          if (timetableProvider.isLoading) {
+          if (timetableProvider.isLoading && _initialLoad) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          return Column(
-            children: [
-              // Calendar View
-              Card(
-                margin: const EdgeInsets.all(16),
-                elevation: 4,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: TableCalendar(
-                    firstDay: DateTime.now().subtract(const Duration(days: 365)),
-                    lastDay: DateTime.now().add(const Duration(days: 365)),
-                    focusedDay: _focusedDay,
-                    selectedDayPredicate: (day) =>
-                        isSameDay(_selectedDay, day),
-                    onDaySelected: (selectedDay, focusedDay) {
-                      setState(() {
-                        _selectedDay = selectedDay;
-                        _focusedDay = focusedDay;
-                      });
-                      _updateSelectedSlots();
-                    },
-                    onPageChanged: (focusedDay) {
-                      setState(() => _focusedDay = focusedDay);
-                    },
-                    calendarFormat: _calendarFormat,
-                    onFormatChanged: (format) {
-                      setState(() => _calendarFormat = format);
-                    },
-                    calendarStyle: CalendarStyle(
-                      todayDecoration: BoxDecoration(
-                        color: const Color(0xFF4361EE).withOpacity(0.3),
-                        shape: BoxShape.circle,
-                      ),
-                      selectedDecoration: const BoxDecoration(
-                        color: Color(0xFF4361EE),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    headerStyle: HeaderStyle(
-                      formatButtonVisible: true,
-                      titleCentered: true,
-                      formatButtonDecoration: BoxDecoration(
-                        color: const Color(0xFF4361EE),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      formatButtonTextStyle: const TextStyle(color: Colors.white),
-                    ),
-                    eventLoader: (day) {
-                      final slots = timetableProvider.getSlotsForDate(day);
-                      return slots.map((slot) => slot.id).toList();
-                    },
-                  ),
-                ),
-              ),
+          if (timetableProvider.error != null) {
+            return _buildErrorView(timetableProvider.error!);
+          }
 
-              // Selected Day Header
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      _selectedDay != null
-                          ? '${_selectedDay!.day}/${_selectedDay!.month}/${_selectedDay!.year}'
-                          : 'Select a date',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    Chip(
-                      label: Text('${_selectedSlots.length} slots'),
-                      backgroundColor: const Color(0xFF4361EE).withOpacity(0.1),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 8),
-
-              // Timetable Slots for Selected Day
-              Expanded(
-                child: _selectedSlots.isEmpty
-                    ? _buildEmptyState()
-                    : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _selectedSlots.length,
-                  itemBuilder: (context, index) {
-                    final slot = _selectedSlots[index];
-                    return TimetableSlotCard(
-                      slot: slot,
-                      onToggleComplete: (isCompleted) async {
-                        await timetableProvider.toggleSlotCompletion(
-                          slot.id,
-                          isCompleted,
-                        );
-                        setState(() {});
-                      },
-                      onEdit: () => _showEditSlotDialog(context, slot),
-                      onDelete: () => _showDeleteDialog(context, slot),
-                    );
-                  },
-                ),
-              ),
-
-              // Quick Actions
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 4,
-                      offset: const Offset(0, -2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildQuickActionButton(
-                      icon: Icons.today,
-                      label: 'Today',
-                      onPressed: () {
-                        setState(() {
-                          _selectedDay = DateTime.now();
-                          _focusedDay = DateTime.now();
-                        });
-                        _updateSelectedSlots();
-                      },
-                    ),
-                    _buildQuickActionButton(
-                      icon: Icons.auto_fix_high,
-                      label: 'AI Plan',
-                      onPressed: () => _showAISuggestionsDialog(context),
-                    ),
-                    _buildQuickActionButton(
-                      icon: Icons.settings,
-                      label: 'Settings',
-                      onPressed: () => _showSettings(context),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          );
+          return _buildTimetableBody(timetableProvider);
         },
       ),
       floatingActionButton: FloatingActionButton(
@@ -225,6 +116,237 @@ class _SmartTimetableScreenState extends State<SmartTimetableScreen> {
         foregroundColor: Colors.white,
         child: const Icon(Icons.add),
       ),
+    );
+  }
+
+  Widget _buildUnauthenticatedView() {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Smart Timetable'),
+        backgroundColor: const Color(0xFF4361EE),
+        foregroundColor: Colors.white,
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.schedule,
+              size: 80,
+              color: Colors.grey,
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Please Sign In',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Sign in to access your timetable',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 30),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pushNamed(context, '/login');
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4361EE),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 40,
+                  vertical: 15,
+                ),
+              ),
+              child: const Text(
+                'Sign In',
+                style: TextStyle(fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorView(String error) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.error,
+            size: 64,
+            color: Colors.red,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Error: $error',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.red),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: _loadTimetable,
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimetableBody(TimetableProvider timetableProvider) {
+    return Column(
+      children: [
+        // Calendar View
+        Card(
+          margin: const EdgeInsets.all(16),
+          elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TableCalendar(
+              firstDay: DateTime.now().subtract(const Duration(days: 365)),
+              lastDay: DateTime.now().add(const Duration(days: 365)),
+              focusedDay: _focusedDay,
+              selectedDayPredicate: (day) =>
+                  isSameDay(_selectedDay, day),
+              onDaySelected: (selectedDay, focusedDay) {
+                setState(() {
+                  _selectedDay = selectedDay;
+                  _focusedDay = focusedDay;
+                });
+                _updateSelectedSlots();
+              },
+              onPageChanged: (focusedDay) {
+                setState(() => _focusedDay = focusedDay);
+              },
+              calendarFormat: _calendarFormat,
+              onFormatChanged: (format) {
+                setState(() => _calendarFormat = format);
+              },
+              calendarStyle: CalendarStyle(
+                todayDecoration: BoxDecoration(
+                  color: const Color(0xFF4361EE).withOpacity(0.3),
+                  shape: BoxShape.circle,
+                ),
+                selectedDecoration: const BoxDecoration(
+                  color: Color(0xFF4361EE),
+                  shape: BoxShape.circle,
+                ),
+              ),
+              headerStyle: HeaderStyle(
+                formatButtonVisible: true,
+                titleCentered: true,
+                formatButtonDecoration: BoxDecoration(
+                  color: const Color(0xFF4361EE),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                formatButtonTextStyle: const TextStyle(color: Colors.white),
+              ),
+              eventLoader: (day) {
+                final slots = timetableProvider.getSlotsForDate(day);
+                return slots.map((slot) => slot.id).toList();
+              },
+            ),
+          ),
+        ),
+
+        // Selected Day Header
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                _selectedDay != null
+                    ? '${_selectedDay!.day}/${_selectedDay!.month}/${_selectedDay!.year}'
+                    : 'Select a date',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              Chip(
+                label: Text('${_selectedSlots.length} slots'),
+                backgroundColor: const Color(0xFF4361EE).withOpacity(0.1),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 8),
+
+        // Timetable Slots for Selected Day
+        Expanded(
+          child: _selectedSlots.isEmpty
+              ? _buildEmptyState()
+              : ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: _selectedSlots.length,
+            itemBuilder: (context, index) {
+              final slot = _selectedSlots[index];
+              return TimetableSlotCard(
+                slot: slot,
+                onToggleComplete: (isCompleted) async {
+                  await timetableProvider.toggleSlotCompletion(
+                    slot.id,
+                    isCompleted,
+                  );
+                  setState(() {});
+                },
+                onEdit: () => _showEditSlotDialog(context, slot),
+                onDelete: () => _showDeleteDialog(context, slot),
+              );
+            },
+          ),
+        ),
+
+        // Quick Actions
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 4,
+                offset: const Offset(0, -2),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildQuickActionButton(
+                icon: Icons.today,
+                label: 'Today',
+                onPressed: () {
+                  setState(() {
+                    _selectedDay = DateTime.now();
+                    _focusedDay = DateTime.now();
+                  });
+                  _updateSelectedSlots();
+                },
+              ),
+              _buildQuickActionButton(
+                icon: Icons.auto_fix_high,
+                label: 'AI Plan',
+                onPressed: () => _showAISuggestionsDialog(context),
+              ),
+              _buildQuickActionButton(
+                icon: Icons.settings,
+                label: 'Settings',
+                onPressed: () => _showSettings(context),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -267,6 +389,15 @@ class _SmartTimetableScreenState extends State<SmartTimetableScreen> {
               ),
               child: const Text('Add First Slot'),
             ),
+            const SizedBox(height: 8),
+            ElevatedButton(
+              onPressed: () => _showAISuggestionsDialog(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Generate with AI'),
+            ),
           ],
         ),
       ),
@@ -294,6 +425,112 @@ class _SmartTimetableScreenState extends State<SmartTimetableScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  // CORRECTED Show statistics method - Now async
+  Future<void> _showStatistics(BuildContext context) async {
+    try {
+      final timetableProvider = Provider.of<TimetableProvider>(
+          context, listen: false);
+
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Loading statistics...'),
+            ],
+          ),
+        ),
+      );
+
+      // Await the async getStats method
+      final stats = await timetableProvider.getStats(daysBack: 30);
+
+      // Close loading dialog
+      if (mounted) {
+        Navigator.pop(context);
+
+        // Show statistics dialog
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Timetable Statistics'),
+            content: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildStatItem('Total Slots', '${stats.totalSlots}'),
+                  _buildStatItem('Completed', '${stats.completedSlots}'),
+                  _buildStatItem('Upcoming', '${stats.upcomingSlots}'),
+                  _buildStatItem('Total Study Hours',
+                      '${stats.totalStudyHours.toStringAsFixed(1)}h'),
+                  _buildStatItem('Avg Daily Study Time',
+                      '${stats.averageStudyTimePerDay.toStringAsFixed(1)}h'),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Study Time Distribution (Last 30 days)',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  ...stats.studyTimeByDay.entries.map(
+                        (entry) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(entry.key),
+                          ),
+                          Text('${(entry.value / 60).toStringAsFixed(1)}h'),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      // Close loading dialog if there's an error
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading statistics: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildStatItem(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label),
+          Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
     );
   }
 
@@ -373,75 +610,6 @@ class _SmartTimetableScreenState extends State<SmartTimetableScreen> {
     );
   }
 
-  // Show statistics
-  void _showStatistics(BuildContext context) {
-    final timetableProvider = Provider.of<TimetableProvider>(
-        context, listen: false);
-    final stats = timetableProvider.getStats();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Timetable Statistics'),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildStatItem('Total Slots', '${stats.totalSlots}'),
-              _buildStatItem('Completed', '${stats.completedSlots}'),
-              _buildStatItem('Upcoming', '${stats.upcomingSlots}'),
-              _buildStatItem('Total Study Hours',
-                  '${stats.totalStudyHours.toStringAsFixed(1)}h'),
-              _buildStatItem('Avg Daily Study Time',
-                  '${stats.averageStudyTimePerDay.toStringAsFixed(1)}h'),
-              const SizedBox(height: 16),
-              const Text(
-                'Study Time Distribution',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              ...stats.studyTimeByDay.entries.map(
-                    (entry) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(entry.key),
-                      ),
-                      Text('${(entry.value / 60).toStringAsFixed(1)}h'),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatItem(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label),
-          Text(
-            value,
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ],
-      ),
-    );
-  }
-
   // Settings dialog
   void _showSettings(BuildContext context) {
     showDialog(
@@ -467,7 +635,6 @@ class _SmartTimetableScreenState extends State<SmartTimetableScreen> {
                 'Notification Time',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
-              // Add time picker here
             ],
           ),
         ),
@@ -486,7 +653,7 @@ class _SmartTimetableScreenState extends State<SmartTimetableScreen> {
   }
 }
 
-// Add/Edit Slot Dialog
+// Add/Edit Slot Dialog - ADD THIS CLASS
 class AddEditTimetableSlotDialog extends StatefulWidget {
   final TimetableSlot? slot;
   final Function(TimetableSlot) onSave;
@@ -498,12 +665,10 @@ class AddEditTimetableSlotDialog extends StatefulWidget {
   });
 
   @override
-  State<AddEditTimetableSlotDialog> createState() =>
-      _AddEditTimetableSlotDialogState();
+  State<AddEditTimetableSlotDialog> createState() => _AddEditTimetableSlotDialogState();
 }
 
-class _AddEditTimetableSlotDialogState
-    extends State<AddEditTimetableSlotDialog> {
+class _AddEditTimetableSlotDialogState extends State<AddEditTimetableSlotDialog> {
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
   late DateTime _selectedDate;
@@ -842,7 +1007,7 @@ class _AddEditTimetableSlotDialogState
   }
 }
 
-// AI Suggestions Dialog
+// AI Suggestions Dialog - ADD THIS CLASS
 class AISuggestionsDialog extends StatefulWidget {
   final Function(List<TimetableSlot>) onApplySuggestions;
 
@@ -987,8 +1152,13 @@ class _AISuggestionsDialogState extends State<AISuggestionsDialog> {
   void _generateSuggestions() async {
     final timetableProvider = Provider.of<TimetableProvider>(
         context, listen: false);
+
+    // Get user's enrolled courses for better suggestions
+    final courseProvider = Provider.of<CourseProvider>(context, listen: false);
+    final courseIds = courseProvider.enrolledCourses.map((c) => c.id).toList();
+
     final suggestions = await timetableProvider.generateAISuggestions(
-      courseIds: [],
+      courseIds: courseIds,
       preferredStudyHoursPerDay: _preferredHours,
       preferredDays: _selectedDays,
       preferredStartTime: _preferredStartTime,

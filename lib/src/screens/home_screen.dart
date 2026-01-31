@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:provider/provider.dart';
+import '../models/timetable_model.dart';
 import '../models/update_model.dart';
 import '../models/user_model.dart';
 import '../models/course_model.dart';
@@ -33,10 +34,9 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // Mock data - replace with actual data from providers
   final UserModel currentUser = UserModel(
     id: '1',
-    name: 'Alex', // This will be overridden by actual user name
+    name: 'Alex',
     email: 'alex@example.com',
     profileImageUrl: null,
     xpPoints: 1247,
@@ -48,22 +48,19 @@ class _HomeScreenState extends State<HomeScreen> {
     lastUpdated: DateTime.now(),
   );
 
-  // Resume feature variables
   bool _showResumeCard = true;
+  TimetableStats? _timetableStats; // Store timetable stats
+  bool _loadingStats = false; // Loading state for stats
 
   @override
   void initState() {
     super.initState();
-    // Load courses when screen initializes
     _loadCourses();
-    // Load weekly updates
     _loadWeeklyUpdates();
-    // Load timetable data
     _loadTimetableData();
-    // Load AI Short Answer data
     _loadShortAnswerData();
-    // Load profile data
     _loadProfileData();
+    _loadTimetableStats(); // Load stats on init
   }
 
   Future<void> _loadCourses() async {
@@ -76,25 +73,37 @@ class _HomeScreenState extends State<HomeScreen> {
     await updatesProvider.loadUpdates();
   }
 
-  // Load timetable data
   Future<void> _loadTimetableData() async {
     final timetableProvider = Provider.of<TimetableProvider>(context, listen: false);
     await timetableProvider.loadTimetableSlots();
   }
 
-  // ADDED: Load AI Short Answer data
+  // NEW: Load timetable statistics
+  Future<void> _loadTimetableStats() async {
+    try {
+      setState(() => _loadingStats = true);
+      final timetableProvider = Provider.of<TimetableProvider>(context, listen: false);
+      final stats = await timetableProvider.getStats(daysBack: 30);
+      setState(() {
+        _timetableStats = stats;
+        _loadingStats = false;
+      });
+    } catch (e) {
+      print('Error loading timetable stats: $e');
+      setState(() => _loadingStats = false);
+    }
+  }
+
   Future<void> _loadShortAnswerData() async {
     final shortAnswerProvider = Provider.of<ShortAnswerProvider>(context, listen: false);
     print('AI Short Answer data initialized');
   }
 
-  // ADDED: Load Profile data
   Future<void> _loadProfileData() async {
     final profileProvider = Provider.of<ProfileProvider>(context, listen: false);
     await profileProvider.loadUserProfile();
   }
 
-  // Resume activity methods
   void _onResumeActivity() {
     final courseProvider = Provider.of<CourseProvider>(context, listen: false);
     final resumeProgress = courseProvider.getResumeProgress();
@@ -111,7 +120,6 @@ class _HomeScreenState extends State<HomeScreen> {
       _showResumeCard = false;
     });
 
-    // Also clear from provider
     final courseProvider = Provider.of<CourseProvider>(context, listen: false);
     courseProvider.clearLastSession();
   }
@@ -164,17 +172,14 @@ class _HomeScreenState extends State<HomeScreen> {
               _buildWelcomeSection(),
               const SizedBox(height: 24),
 
-              // Resume Activity Card - Now the main learning section
               _buildResumeActivitySection(),
 
               _buildStatsSection(),
               const SizedBox(height: 24),
 
-              // Today's Study Schedule Section
               _buildTodaysScheduleSection(),
               const SizedBox(height: 24),
 
-              // AI Tools Section
               _buildAIToolsSection(),
               const SizedBox(height: 24),
 
@@ -216,7 +221,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       actions: [
-        // Profile Icon in AppBar
         Consumer<ProfileProvider>(
           builder: (context, profileProvider, child) {
             final profile = profileProvider.userProfile;
@@ -433,7 +437,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildWelcomeSection() {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
-        // Get user name from Firebase Auth
         String userName = 'Learner';
         final firebaseUser = FirebaseAuth.instance.currentUser;
 
@@ -550,13 +553,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Today's Study Schedule Section
+  // Today's Study Schedule Section - UPDATED
   Widget _buildTodaysScheduleSection() {
     return Consumer<TimetableProvider>(
       builder: (context, timetableProvider, child) {
         final todaySlots = timetableProvider.getTodaySlots();
         final upcomingSlots = timetableProvider.getUpcomingSlots().take(2).toList();
-        final stats = timetableProvider.getStats();
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -790,7 +792,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 12),
 
-            // Study Statistics
+            // Study Statistics - UPDATED
             Card(
               elevation: 3,
               shape: RoundedRectangleBorder(
@@ -801,36 +803,75 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Study Statistics',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _buildStudyStatItem(
-                          '${stats.completedSlots}',
-                          'Completed',
-                          Icons.check_circle,
-                          Colors.green,
+                        Text(
+                          'Study Statistics',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                        _buildStudyStatItem(
-                          '${stats.upcomingSlots}',
-                          'Upcoming',
-                          Icons.upcoming,
-                          Colors.blue,
-                        ),
-                        _buildStudyStatItem(
-                          '${stats.totalStudyHours.toStringAsFixed(1)}h',
-                          'Total Time',
-                          Icons.timer,
-                          Colors.orange,
-                        ),
+                        if (_loadingStats)
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.blue[400],
+                            ),
+                          )
+                        else
+                          IconButton(
+                            icon: const Icon(Icons.refresh, size: 16),
+                            onPressed: _loadTimetableStats,
+                            tooltip: 'Refresh statistics',
+                          ),
                       ],
                     ),
+                    const SizedBox(height: 12),
+
+                    if (_loadingStats)
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 20),
+                          child: CircularProgressIndicator(),
+                        ),
+                      )
+                    else if (_timetableStats == null)
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 20),
+                          child: Text(
+                            'No statistics available',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        ),
+                      )
+                    else
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _buildStudyStatItem(
+                            '${_timetableStats!.completedSlots}',
+                            'Completed',
+                            Icons.check_circle,
+                            Colors.green,
+                          ),
+                          _buildStudyStatItem(
+                            '${_timetableStats!.upcomingSlots}',
+                            'Upcoming',
+                            Icons.upcoming,
+                            Colors.blue,
+                          ),
+                          _buildStudyStatItem(
+                            '${_timetableStats!.totalStudyHours.toStringAsFixed(1)}h',
+                            'Total Time',
+                            Icons.timer,
+                            Colors.orange,
+                          ),
+                        ],
+                      ),
                   ],
                 ),
               ),
@@ -906,7 +947,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         const SizedBox(height: 12),
 
-        // AI Short Answer Card
         _buildAIToolCard(
           icon: Icons.question_answer,
           title: 'AI Short Answers',

@@ -15,7 +15,9 @@ class AuthProvider extends ChangeNotifier {
   String? _error;
   String? _successMessage;
 
+  // Getter for user - BOTH are now available
   User? get user => _user;
+  User? get currentUser => _user; // Add this line
   bool get isLoading => _isLoading;
   String? get error => _error;
   String? get successMessage => _successMessage;
@@ -27,6 +29,7 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
     });
   }
+
 
   // ========== EMAIL/PASSWORD SIGN IN ==========
   Future<void> signInWithEmail({
@@ -63,6 +66,11 @@ class AuthProvider extends ChangeNotifier {
     } finally {
       _setLoading(false);
     }
+  }
+  // ========== UPDATE USER ==========
+  void updateUser(User? user) {
+    _user = user;
+    notifyListeners();
   }
 
   // ========== EMAIL/PASSWORD SIGN UP ==========
