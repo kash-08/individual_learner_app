@@ -64,13 +64,13 @@ Environment-based configuration
  ├── providers         # Helper functions <br>
  ├── assets            # Images, icons, fonts<br>
 
- ### 📲 Flutter iOS Setup
-bash
-flutter doctor
-cd ios
-pod install
-cd ..
-flutter run 
+ ### 📲 Flutter iOS Setup<br>
+bash<br>
+flutter doctor<br>
+cd ios<br>
+pod install<br>
+cd ..<br>
+flutter run <br><br>
 
 🎨 UI/UX Design Principles
 
