@@ -64,6 +64,14 @@ Environment-based configuration
  ├── providers         # Helper functions <br>
  ├── assets            # Images, icons, fonts<br>
 
+ ### 📲 Flutter iOS Setup
+bash
+flutter doctor
+cd ios
+pod install
+cd ..
+flutter run 
+
 🎨 UI/UX Design Principles
 
 Clean and minimal design
