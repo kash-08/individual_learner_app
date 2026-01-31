@@ -9,45 +9,45 @@ The project focuses on scalable architecture, clean UI/UX, CI/CD practices, and 
 🚀 Features Implemented <br><br>
 ✅ Core Features
 
-Home Dashboard
+1) Home Dashboard
 
-Centralized overview of user activities
+   a)Centralized overview of user activities
 
-Quick navigation to key modules
+   b)Quick navigation to key modules
 
-Registered Courses
+2) Registered Courses
 
-Dynamic course list
+  a)Dynamic course list
 
-Progress tracking with visual indicators
+  b)Progress tracking with visual indicators
 
-Resume Last Activity
+3) Resume Last Activity
 
-Session-based continuation of learning
+  a)Session-based continuation of learning
 
-Smart state management
+  b)Smart state management
 
-Weekly Updates Feed
+4) Weekly Updates Feed
 
-Personalized feed of new courses and content
+  a)Personalized feed of new courses and content
 
-Backend-driven data rendering
+  b)Backend-driven data rendering
 
-Challenges & Exams
+5) Challenges & Exams
 
-Quizzes and mock tests
+  a) Quizzes and mock tests
 
-Automated evaluation and result tracking
+  b) Automated evaluation and result tracking
 
 🤖 AI-Powered Features
 
-AI Assistant
+1) AI Assistant
 
 Conversational chatbot for guided learning
 
 Backend-integrated conversational flows
 
-AI Short Answer Tool
+2) AI Short Answer Tool
 
 Instant definitions and summaries
 
@@ -55,13 +55,13 @@ Optimized for quick learning support
 
 📅 Productivity Tools
 
-Smart Timetable Planner
+1) Smart Timetable Planner
 
 Custom study schedules
 
 Persistent backend storage
 
-User Profile & Analytics
+2) User Profile & Analytics
 
 Profile management
 
@@ -70,13 +70,13 @@ Visual performance analytics and insights
 🧱 Tech Stack
 Frontend
 
-React Native / Flutter (as per project implementation)
+Flutter (Dart)
 
 Modular component-based architecture
 
 Responsive UI/UX design principles
 
-Backend
+Backend : firebase
 
 API-driven architecture
 
@@ -97,9 +97,8 @@ Environment-based configuration
  ├── components        # Reusable UI components
  ├── screens           # App screens (Dashboard, Courses, AI, Profile)
  ├── services          # API & backend services
- ├── utils             # Helper functions and constants
+ ├── providers         # Helper functions 
  ├── assets            # Images, icons, fonts
- └── navigation        # App navigation logic
 
 🎨 UI/UX Design Principles
 
@@ -146,7 +145,6 @@ Week 10	AI Short Answer Feature
 Week 11	Profile & Analytics
 Week 12	Testing & Documentation
 
-👤 Author
 
 Kashish Pherwani
 Computer Science & Engineering
