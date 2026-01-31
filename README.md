@@ -125,7 +125,10 @@ Bharati Vidyapeeth(Deemed University ) College Of Engineering<br>
 
 ⭐ Acknowledgements
 
-Special thanks to mentors and reviewers for continuous feedback throughout the development lifecycle of Algorithm Aliens Pvt.Ltd
+Special thanks to mentors and reviewers for continuous feedback throughout the development lifecycle of Algorithm Aliens Pvt.Ltd<br> <br>
+
+Demo Video<br>
+https://drive.google.com/file/d/1Ui4Vrv8HKtWvyAGGltoegQF7QxQ9gSQR/view?usp=sharing
 
 
 
