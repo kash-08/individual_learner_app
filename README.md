@@ -110,9 +110,10 @@ Week 11	Profile & Analytics<br>
 Week 12	Testing & Documentation<br>
 
 
-Kashish Pherwani
-Computer Science & Engineering
-📍 Pune, India
+Kashish Pherwani<br>
+Computer Science & Engineering<br>
+Bharati Vidyapeeth(Deemed University ) College Of Engineering<br>
+📍 Pune, India<br>
 
 ⭐ Acknowledgements
 
