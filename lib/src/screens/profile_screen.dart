@@ -17,10 +17,42 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   UserModel? _currentUserData;
   bool _isLoadingUser = true;
-  Map<String, dynamic>? _userStats;
   int _totalCourses = 0;
   double _totalStudyTime = 0.0;
   double _progressPercentage = 0.0;
+
+  // Mock study time data for each day of week
+  final Map<String, double> _mockStudyTimeByDay = {
+    'Monday': 2.5,
+    'Tuesday': 3.0,
+    'Wednesday': 1.5,
+    'Thursday': 4.0,
+    'Friday': 2.0,
+    'Saturday': 1.0,
+    'Sunday': 0.5,
+  };
+
+  // Mock enrolled courses
+  final List<Map<String, dynamic>> _mockCourses = [
+    {
+      'title': 'Introduction to Flutter',
+      'category': 'Mobile Development',
+      'progress': 65,
+      'color': Color(0xFF4361EE),
+    },
+    {
+      'title': 'Web Development Basics',
+      'category': 'Web Development',
+      'progress': 40,
+      'color': Color(0xFF4CC9F0),
+    },
+    {
+      'title': 'Data Structures',
+      'category': 'Computer Science',
+      'progress': 85,
+      'color': Color(0xFF7209B7),
+    },
+  ];
 
   @override
   void initState() {
@@ -97,46 +129,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
         print('User created: ${_currentUserData!.name}');
 
-        // Calculate user statistics
-        _totalCourses = _currentUserData!.enrolledCourses.length;
-        _totalStudyTime = _currentUserData!.studyTimeThisWeek;
+        // Use real data if available, otherwise use mock data
+        _totalCourses = _currentUserData!.enrolledCourses.isEmpty
+            ? _mockCourses.length  // Use mock data
+            : _currentUserData!.enrolledCourses.length;
 
-        // Calculate progress (for demo, using XP points as progress indicator)
-        _progressPercentage =
-            (_currentUserData!.xpPoints / 2000).clamp(0.0, 1.0) * 100;
+        _totalStudyTime = _currentUserData!.studyTimeThisWeek > 0
+            ? _currentUserData!.studyTimeThisWeek
+            : 14.5;  // Mock total study time (sum of mockStudyTimeByDay)
 
-        // Get additional stats from Firestore if available
-        await _loadUserStatistics(currentUser.uid);
+        // Calculate progress (use XP points or mock data)
+        if (_currentUserData!.xpPoints > 0) {
+          _progressPercentage = (_currentUserData!.xpPoints / 2000).clamp(0.0, 1.0) * 100;
+        } else {
+          // Calculate average progress from mock courses
+          final avgProgress = _mockCourses.map((c) => c['progress'] as int).reduce((a, b) => a + b) / _mockCourses.length;
+          _progressPercentage = avgProgress;
+        }
+
+        // Create the user document in Firestore if needed
+        await _createUserDocumentIfNotExists(currentUser, _currentUserData!);
       } else {
-        // Create default user data if document doesn't exist
-        print('User document not found, creating default');
+        // Create user with mock data if document doesn't exist
+        print('User document not found, creating with mock data');
 
         _currentUserData = UserModel(
           id: currentUser.uid,
           name: currentUser.displayName ?? 'User',
           email: currentUser.email ?? '',
           profileImageUrl: currentUser.photoURL,
-          xpPoints: 245,
-          dayStreak: 7,
-          studyTimeThisWeek: 10.4,
-          enrolledCourses: [],
-          completedQuizzes: [],
+          xpPoints: 1247,  // Mock XP points
+          dayStreak: 7,     // Mock streak
+          studyTimeThisWeek: 14.5,  // Mock study time
+          enrolledCourses: _mockCourses.map((c) => c['title'] as String).toList(),
+          completedQuizzes: ['Quiz 1', 'Quiz 2', 'Quiz 3'],  // Mock quizzes
           createdAt: DateTime.now(),
           lastUpdated: DateTime.now(),
         );
 
-        _totalCourses = 0;
-        _totalStudyTime = 0.0;
-        _progressPercentage = 0.0;
+        _totalCourses = _mockCourses.length;
+        _totalStudyTime = 14.5;
+        _progressPercentage = 63.3;  // Average of mock courses
 
-        // Create the user document in Firestore
+        // Create the user document in Firestore with mock data
         await _createUserDocumentIfNotExists(currentUser, _currentUserData!);
       }
     } catch (e, stackTrace) {
       print('Error loading user data: $e');
       print('Stack trace: $stackTrace');
 
-      // Fallback to Firebase Auth data
+      // Fallback to Firebase Auth data with mock stats
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser != null) {
         _currentUserData = UserModel(
@@ -144,14 +186,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
           name: currentUser.displayName ?? 'User',
           email: currentUser.email ?? '',
           profileImageUrl: currentUser.photoURL,
-          xpPoints: 245,
-          dayStreak: 7,
-          studyTimeThisWeek: 10.4,
-          enrolledCourses: [],
-          completedQuizzes: [],
+          xpPoints: 1247,  // Mock
+          dayStreak: 7,     // Mock
+          studyTimeThisWeek: 14.5,  // Mock
+          enrolledCourses: _mockCourses.map((c) => c['title'] as String).toList(),
+          completedQuizzes: ['Quiz 1', 'Quiz 2', 'Quiz 3'],
           createdAt: DateTime.now(),
           lastUpdated: DateTime.now(),
         );
+
+        _totalCourses = _mockCourses.length;
+        _totalStudyTime = 14.5;
+        _progressPercentage = 63.3;
       }
     } finally {
       setState(() {
@@ -209,71 +255,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return null;
   }
 
-  // ========== LOAD USER STATISTICS ==========
-  Future<void> _loadUserStatistics(String userId) async {
-    try {
-      // Query enrolled courses to get count
-      final coursesSnapshot = await FirebaseFirestore.instance
-          .collection('courses')
-          .where('enrolledUsers', arrayContains: userId)
-          .get();
-
-      _totalCourses = coursesSnapshot.docs.length;
-
-      // Query study sessions to calculate total study time
-      final sessionsSnapshot = await FirebaseFirestore.instance
-          .collection('study_sessions')
-          .where('userId', isEqualTo: userId)
-          .get();
-
-      double totalTime = 0.0;
-      for (var doc in sessionsSnapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>;
-        totalTime += (data['duration']?.toDouble() ?? 0.0);
-      }
-      _totalStudyTime = totalTime;
-
-      // Calculate progress from completed lessons
-      final completedLessonsSnapshot = await FirebaseFirestore.instance
-          .collection('user_progress')
-          .where('userId', isEqualTo: userId)
-          .where('isCompleted', isEqualTo: true)
-          .get();
-
-      final totalLessonsSnapshot = await FirebaseFirestore.instance
-          .collection('courses')
-          .get();
-
-      int totalLessonsCount = 0;
-      for (var course in totalLessonsSnapshot.docs) {
-        final courseData = course.data() as Map<String, dynamic>;
-        totalLessonsCount += _safeIntParse(courseData['totalLessons']);
-      }
-
-      if (totalLessonsCount > 0) {
-        _progressPercentage =
-        (completedLessonsSnapshot.docs.length / totalLessonsCount * 100);
-      }
-
-      setState(() {});
-    } catch (e) {
-      print('Error loading user statistics: $e');
-    }
-  }
-
   // ========== FORMAT DATE ==========
   String _formatDate(DateTime? date) {
-    if (date == null) return 'N/A';
+    if (date == null) return '2026/1/31'; // Default mock date
     return '${date.year}/${date.month}/${date.day}';
   }
 
   // ========== GET USER STUDY FIELD ==========
   String _getUserStudyField() {
-    // You can customize this based on user's enrolled courses
-    if (_currentUserData?.enrolledCourses.isNotEmpty ?? false) {
-      return 'Technology & Development';
+    // Use mock courses to determine field
+    if (_mockCourses.isNotEmpty) {
+      return _mockCourses[0]['category'] as String;
     }
-    return 'General Learning';
+    return 'Technology & Development';
+  }
+
+  // ========== GET TODAY'S STUDY TIME ==========
+  double _getTodayStudyTime() {
+    final today = DateTime.now();
+    final dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    final todayName = dayNames[today.weekday % 7];
+    return _mockStudyTimeByDay[todayName] ?? 0.0;
   }
 
   // ========== UPDATE DISPLAY NAME ==========
@@ -408,6 +410,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final memberSince = _formatDate(_currentUserData!.createdAt);
     final dayStreak = _currentUserData!.dayStreak;
     final xpPoints = _currentUserData!.xpPoints;
+    final todayStudyTime = _getTodayStudyTime();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -461,6 +464,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
+                  const SizedBox(height: 12),
+
+                  // Today's study time badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE9ECFF),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.access_time, size: 16, color: Color(0xFF4361EE)),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Today: ${todayStudyTime}h',
+                          style: const TextStyle(
+                            color: Color(0xFF4361EE),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
                   const SizedBox(height: 12),
 
                   Text(
@@ -593,6 +621,131 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           const SizedBox(height: 20),
 
+          // Weekly Study Time Card
+          Card(
+            elevation: 3,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Weekly Study Time',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        'Total: ${_totalStudyTime.toStringAsFixed(1)}h',
+                        style: const TextStyle(
+                          color: Color(0xFF4361EE),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    height: 150,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _mockStudyTimeByDay.length,
+                      itemBuilder: (context, index) {
+                        final day = _mockStudyTimeByDay.keys.elementAt(index);
+                        final hours = _mockStudyTimeByDay[day]!;
+                        final maxHours = _mockStudyTimeByDay.values.reduce((a, b) => a > b ? a : b);
+                        final barHeight = (hours / maxHours) * 100;
+
+                        return Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Text(
+                                hours.toStringAsFixed(1),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Container(
+                                width: 30,
+                                height: barHeight,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF4361EE),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                day.substring(0, 3),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // Enrolled Courses Card
+          Card(
+            elevation: 3,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Enrolled Courses',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _mockCourses.length,
+                    separatorBuilder: (context, index) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final course = _mockCourses[index];
+                      return _buildCourseProgress(
+                        title: course['title'] as String,
+                        category: course['category'] as String,
+                        progress: course['progress'] as int,
+                        color: course['color'] as Color,
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
           // Quick Stats Card
           Card(
             elevation: 3,
@@ -614,9 +767,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 16),
                   _buildProgressBar('Course Completion', _progressPercentage),
                   const SizedBox(height: 12),
-                  _buildProgressBar('Study Consistency', 75.0), // Example value
+                  _buildProgressBar('Study Consistency', 85.0), // Mock data
                   const SizedBox(height: 12),
-                  _buildProgressBar('Quiz Performance', 85.0), // Example value
+                  _buildProgressBar('Quiz Performance', 92.0), // Mock data
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // Recent Achievements Card
+          Card(
+            elevation: 3,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Recent Achievements',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _AchievementBadge(
+                        icon: Icons.star,
+                        label: '7-Day Streak',
+                        color: Colors.amber,
+                      ),
+                      _AchievementBadge(
+                        icon: Icons.timer,
+                        label: '10h Studied',
+                        color: Colors.blue,
+                      ),
+                      _AchievementBadge(
+                        icon: Icons.quiz,
+                        label: '3 Quizzes',
+                        color: Colors.green,
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -711,6 +910,67 @@ class _ProfileScreenState extends State<ProfileScreen> {
             color: Colors.grey,
             fontWeight: FontWeight.w500,
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCourseProgress({
+    required String title,
+    required String category,
+    required int progress,
+    required Color color,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            Text(
+              '$progress%',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          category,
+          style: const TextStyle(
+            color: Colors.grey,
+            fontSize: 14,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Stack(
+          children: [
+            Container(
+              height: 6,
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+            Container(
+              height: 6,
+              width: progress * 2.4, // 240px max for 100%
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -1058,21 +1318,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
-
-  // Helper method for parsing integers
-  int _safeIntParse(dynamic value) {
-    if (value == null) return 0;
-    if (value is int) return value;
-    if (value is double) return value.toInt();
-    if (value is String) {
-      try {
-        return int.tryParse(value) ?? 0;
-      } catch (e) {
-        return 0;
-      }
-    }
-    return 0;
-  }
 }
 
 class _StatCircle extends StatelessWidget {
@@ -1115,6 +1360,49 @@ class _StatCircle extends StatelessWidget {
           style: const TextStyle(
             fontSize: 12,
             color: Colors.grey,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AchievementBadge extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  const _AchievementBadge({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          width: 60,
+          height: 60,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            shape: BoxShape.circle,
+            border: Border.all(color: color, width: 2),
+          ),
+          child: Icon(
+            icon,
+            color: color,
+            size: 30,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],
