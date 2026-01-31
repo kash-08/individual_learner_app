@@ -9,35 +9,15 @@ The project focuses on scalable architecture, clean UI/UX, CI/CD practices, and 
 🚀 Features Implemented <br><br>
 ✅ Core Features
 
-1) Home Dashboard
+1) Home Dashboard : Centralized overview of user activities , Quick navigation to key modules
 
-   a)Centralized overview of user activities
+2) Registered Courses : Dynamic course list, Progress tracking with visual indicators
 
-   b)Quick navigation to key modules
+3) Resume Last Activity: Session-based continuation of learning, Smart state management
 
-2) Registered Courses
+4) Weekly Updates Feed: Personalized feed of new courses and content, Backend-driven data rendering
 
-  a)Dynamic course list
-
-  b)Progress tracking with visual indicators
-
-3) Resume Last Activity
-
-  a)Session-based continuation of learning
-
-  b)Smart state management
-
-4) Weekly Updates Feed
-
-  a)Personalized feed of new courses and content
-
-  b)Backend-driven data rendering
-
-5) Challenges & Exams
-
-  a) Quizzes and mock tests
-
-  b) Automated evaluation and result tracking
+5) Challenges & Exams: Quizzes and mock tests, Automated evaluation and result tracking
 
 🤖 AI-Powered Features
 
@@ -92,13 +72,13 @@ CI/CD Pipeline for build and deployment
 
 Environment-based configuration
 
-📂 Project Structure
-/src
- ├── components        # Reusable UI components
- ├── screens           # App screens (Dashboard, Courses, AI, Profile)
- ├── services          # API & backend services
- ├── providers         # Helper functions 
- ├── assets            # Images, icons, fonts
+📂 Project Structure<br>
+/src <br>
+ ├── components        # Reusable UI components <br>
+ ├── screens           # App screens (Dashboard, Courses, AI, Profile)<br>
+ ├── services          # API & backend services<br>
+ ├── providers         # Helper functions <br>
+ ├── assets            # Images, icons, fonts<br>
 
 🎨 UI/UX Design Principles
 
