@@ -1,4 +1,4 @@
-📱 Learning App – Full Stack Mobile Application<br>
+📱 Learning App – Full Stack Mobile Application<br><br>
 📌 Project Overview
 
 This project is a feature-rich learning and productivity mobile application designed to help users manage courses, track progress, access AI-powered tools, and plan their study routines efficiently.
