@@ -6,7 +6,7 @@ The app was developed following a 12-week structured roadmap, covering planning,
 
 The project focuses on scalable architecture, clean UI/UX, CI/CD practices, and modular development.
 
-🚀 Features Implemented
+🚀 Features Implemented <br><br>
 ✅ Core Features
 
 Home Dashboard
