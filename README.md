@@ -21,31 +21,15 @@ The project focuses on scalable architecture, clean UI/UX, CI/CD practices, and 
 
 🤖 AI-Powered Features
 
-1) AI Assistant
+1) AI Assistant: Conversational chatbot for guided learning, Backend-integrated conversational flows
 
-Conversational chatbot for guided learning
-
-Backend-integrated conversational flows
-
-2) AI Short Answer Tool
-
-Instant definitions and summaries
-
-Optimized for quick learning support
+2) AI Short Answer Tool: Instant definitions and summaries, Optimized for quick learning support
 
 📅 Productivity Tools
 
-1) Smart Timetable Planner
+1) Smart Timetable Planner: Custom study schedules,Persistent backend storage
 
-Custom study schedules
-
-Persistent backend storage
-
-2) User Profile & Analytics
-
-Profile management
-
-Visual performance analytics and insights
+2) User Profile & Analytics:Profile management,Visual performance analytics and insights
 
 🧱 Tech Stack
 Frontend
@@ -110,20 +94,20 @@ Continuous integration for code validation
 
 Deployment-ready configuration
 
-📆 Project Roadmap Summary
-Week	Milestone
-Week 1	Project Setup & Planning
-Week 2	Home Page & Dashboard
-Week 3	Registered Courses
-Week 4	Continuation Feature
-Week 5	Weekly Updates Feed
-Week 6	Challenges & Exams
-Week 7	AI Tools Navigation
-Week 8	AI Assistant Integration
-Week 9	Smart Timetable Planner
-Week 10	AI Short Answer Feature
-Week 11	Profile & Analytics
-Week 12	Testing & Documentation
+📆 Project Roadmap Summary<br>
+Week	Milestone<br>
+Week 1	Project Setup & Planning<br>
+Week 2	Home Page & Dashboard<br>
+Week 3	Registered Courses<br>
+Week 4	Continuation Feature<br>
+Week 5	Weekly Updates Feed<br>
+Week 6	Challenges & Exams<br>
+Week 7	AI Tools Navigation<br>
+Week 8	AI Assistant Integration<br>
+Week 9	Smart Timetable Planner<br>
+Week 10	AI Short Answer Feature<br>
+Week 11	Profile & Analytics<br>
+Week 12	Testing & Documentation<br>
 
 
 Kashish Pherwani
